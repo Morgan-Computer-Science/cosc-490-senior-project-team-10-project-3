@@ -545,3 +545,8 @@ from google.adk.apps import App
 
 app = App(root_agent=root_agent, name="software_bug_assistant")
 
+def advisor_agent(student, question):
+    if "classes" in question.lower():
+        return "Based on your progress, you should take CS201 and MATH201."
+    
+    return "I recommend speaking with your academic advisor."
