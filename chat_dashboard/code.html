@@ -348,7 +348,7 @@
   </div>
 
   <script>
-    const API_URL = "http://127.0.0.1:5001/chat";
+    const API_URL = "https://theo-17-hg-5000.app.github.dev/chat";
 
     if (localStorage.getItem("msu_logged_in") !== "true") {
       window.location.href = "../login/code.html";
@@ -600,7 +600,7 @@
         addBotMessage(data.reply || "No response returned.");
       } catch (error) {
         removeTypingMessage();
-        addBotMessage("Could not connect to the backend. Make sure Flask is running on port 5001.");
+        addBotMessage("Could not connect to the backend. Make sure Flask is running on port 5000.");
       } finally {
         sendBtn.disabled = false;
         promptInput.focus();
