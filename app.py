@@ -1,7 +1,7 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="chat_dashboard")
 CORS(app)
 
 def advisor_agent(message):
@@ -9,7 +9,7 @@ def advisor_agent(message):
 
 @app.route("/", methods=["GET"])
 def home():
-    return "Backend is running."
+    return send_from_directory("chat_dashboard", "index.html")
 
 @app.route("/chat", methods=["POST"])
 def chat():
