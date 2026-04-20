@@ -1,12 +1,7 @@
 from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
 import sqlite3
-@app.route("/")
-def home():
-    return render_template("index.html")
 
 app = Flask(__name__)
-CORS(app)
 
 DB_PATH = "student_advisor.db"
 
@@ -15,6 +10,17 @@ def get_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def get_student(student_id: int):
+    conn = get_connection()
+    row = conn.execute("""
+        SELECT student_id, first_name, last_name, class_level, current_semester, credits_earned, status_note
+        FROM students
+        WHERE student_id = ?
+    """, (student_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 
 def get_student_progress(student_id: int):
@@ -27,17 +33,6 @@ def get_student_progress(student_id: int):
     """, (student_id,)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
-
-
-def get_student(student_id: int):
-    conn = get_connection()
-    row = conn.execute("""
-        SELECT student_id, first_name, last_name, class_level, current_semester, credits_earned, status_note
-        FROM students
-        WHERE student_id = ?
-    """, (student_id,)).fetchone()
-    conn.close()
-    return dict(row) if row else None
 
 
 def get_semester_plan(semester_id: int):
@@ -73,54 +68,61 @@ def get_elective_choices(group_code: str):
 
 def build_adviser_response(student: dict, progress: list, question: str):
     q = question.lower()
+    first_name = student["first_name"]
     completed_codes = {row["completed_course_code"] for row in progress}
 
     if "gpa" in q:
         return (
-            f"{student['first_name']}, your GPA is not stored in this database yet, "
-            f"but you have earned {student['credits_earned']} credits and are currently a "
+            f"{first_name}, your GPA is not stored in this demo database yet. "
+            f"You currently have {student['credits_earned']} earned credits and you are listed as a "
             f"{student['class_level']} in semester {student['current_semester']}."
         )
 
-    if "classes" in q or "take" in q or "schedule" in q or "semester" in q:
-        next_semester = min(student["current_semester"] + 1, 8)
-        plan = get_semester_plan(next_semester)
-
-        recommended = []
-        for item in plan:
-            if not item["item"].startswith("["):
-                if item["item"] not in completed_codes:
-                    recommended.append(item["item"])
-
-        if not recommended:
-            return (
-                f"{student['first_name']}, you are close to the end of the standard plan. "
-                f"You should focus on remaining electives and graduation requirements."
-            )
-
+    if "progress" in q or "completed" in q:
+        if not progress:
+            return f"{first_name} has no completed-course records yet."
+        sample = ", ".join([row["completed_course_code"] for row in progress[:6]])
         return (
-            f"{student['first_name']}, based on your current record, a good next semester plan is: "
-            + ", ".join(recommended[:5]) + "."
+            f"{first_name}, you have {len(progress)} completed courses recorded so far. "
+            f"Some of them are {sample}."
         )
 
     if "elective" in q or "group a" in q:
         electives = get_elective_choices("A")
-        names = [e["course_code"] for e in electives[:5]]
-        return "Some Group A electives you can choose from are: " + ", ".join(names) + "."
+        if not electives:
+            return "I could not find any Group A electives in the database."
+        sample = ", ".join([row["course_code"] for row in electives[:6]])
+        return f"Some Group A elective choices are {sample}."
 
-    if "progress" in q or "completed" in q:
-        if not progress:
-            return f"{student['first_name']} has no completed-course records yet."
-        names = [p["completed_course_code"] for p in progress[:6]]
+    if "classes" in q or "take" in q or "schedule" in q or "semester" in q or "plan" in q:
+        next_semester = min(student["current_semester"] + 1, 8)
+        plan = get_semester_plan(next_semester)
+
+        recommended = []
+        for row in plan:
+            item = row["item"]
+            if not item.startswith("[") and item not in completed_codes:
+                recommended.append(item)
+
+        if recommended:
+            sample = ", ".join(recommended[:5])
+            return (
+                f"{first_name}, based on your current record, a good next-semester plan is: {sample}."
+            )
+
         return (
-            f"{student['first_name']} has completed {len(progress)} recorded courses so far, including "
-            + ", ".join(names) + "."
+            f"{first_name}, you are close to finishing the standard sequence. "
+            f"You should focus on any remaining electives and graduation requirements."
         )
 
     return (
-        f"Hi {student['first_name']}, I can help with class recommendations, semester planning, "
-        f"electives, and progress tracking."
+        f"Hi {first_name}, I can help with class recommendations, semester planning, electives, and progress tracking."
     )
+
+
+@app.route("/")
+def home():
+    return render_template("index.html")
 
 
 @app.route("/api/health", methods=["GET"])
@@ -168,7 +170,7 @@ def adviser():
     data = request.get_json(silent=True) or {}
 
     student_id = data.get("student_id", 1)
-    question = data.get("question", "").strip()
+    question = str(data.get("question", "")).strip()
 
     if not question:
         return jsonify({"reply": "Please enter a question for the adviser."}), 400

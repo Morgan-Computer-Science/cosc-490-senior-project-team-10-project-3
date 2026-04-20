@@ -240,43 +240,6 @@
         </p>
       </div>
     </footer>
-
-    <div class="absolute right-8 top-32 w-64 hidden xl:block">
-      <div class="bg-white/80 backdrop-blur-xl rounded-2xl p-6 shadow-xl space-y-4 border border-slate-200/20">
-        <div class="flex items-center gap-2 text-secondary font-bold text-xs uppercase tracking-wider">
-          <span class="material-symbols-outlined text-sm">event_note</span>
-          <span>Upcoming Deadlines</span>
-        </div>
-
-        <div class="space-y-3">
-          <div class="group cursor-pointer">
-            <p class="text-[10px] text-slate-400 font-bold uppercase">Nov 15</p>
-            <p class="text-xs font-bold text-primary group-hover:text-secondary transition-colors">Spring Registration Opens</p>
-          </div>
-          <div class="group cursor-pointer">
-            <p class="text-[10px] text-slate-400 font-bold uppercase">Nov 28</p>
-            <p class="text-xs font-bold text-primary group-hover:text-secondary transition-colors">Withdrawal Deadline</p>
-          </div>
-        </div>
-
-        <div class="pt-4 border-t border-slate-200/50">
-          <button id="calendarBtn" class="w-full py-2 bg-primary-container text-white text-[10px] font-bold uppercase tracking-widest rounded-lg">
-            View Full Academic Calendar
-          </button>
-        </div>
-      </div>
-
-      <div class="mt-6 bg-[#00205B] rounded-2xl p-6 shadow-xl relative overflow-hidden group">
-        <div class="relative z-10">
-          <h4 class="text-white font-headline font-bold text-sm">Need a 1-on-1?</h4>
-          <p class="text-blue-200/80 text-[11px] mt-2">Advisor office hours are tomorrow at 2:00 PM.</p>
-          <button id="meetingBtn" class="mt-4 text-secondary-fixed text-[10px] font-black uppercase flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-            Schedule Meeting
-            <span class="material-symbols-outlined text-xs">arrow_forward</span>
-          </button>
-        </div>
-      </div>
-    </div>
   </main>
 
   <div id="settingsModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center">
@@ -347,8 +310,6 @@
   <script>
     const API_URL = "/api/adviser";
 
-    localStorage.setItem("msu_logged_in", "true");
-
     const chatMessages = document.getElementById("chatMessages");
     const promptInput = document.getElementById("promptInput");
     const sendBtn = document.getElementById("sendBtn");
@@ -363,8 +324,6 @@
     const attachBtn = document.getElementById("attachBtn");
     const imageBtn = document.getElementById("imageBtn");
     const micBtn = document.getElementById("micBtn");
-    const calendarBtn = document.getElementById("calendarBtn");
-    const meetingBtn = document.getElementById("meetingBtn");
     const fileInput = document.getElementById("fileInput");
     const imageInput = document.getElementById("imageInput");
     const profileImageInput = document.getElementById("profileImageInput");
@@ -692,7 +651,6 @@
     });
 
     logoutBtn.addEventListener("click", () => {
-      localStorage.removeItem("msu_logged_in");
       alert("Logged out.");
     });
 
@@ -761,14 +719,6 @@
       settings.fontSize = fontSizeSelect.value;
       saveSettings();
       applySettings();
-    });
-
-    calendarBtn.addEventListener("click", () => {
-      window.open("https://www.morgan.edu", "_blank");
-    });
-
-    meetingBtn.addEventListener("click", () => {
-      window.location.href = "mailto:advisor@morgan.edu?subject=Advising%20Meeting%20Request";
     });
 
     [settingsModal, historyModal, accountModal].forEach((modal) => {
