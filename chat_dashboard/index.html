@@ -188,14 +188,14 @@
           </p>
 
           <div class="flex gap-2 mt-4 flex-wrap">
-            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="Show me available sections for Operating Systems">
-              Show sections
+            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="What classes should I take next semester?">
+              Show classes
             </button>
-            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="What GPA do I need for upper-level CS courses?">
-              GPA requirement
+            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="Show my progress">
+              Show progress
             </button>
-            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="Help me plan my next semester as a CS major">
-              Plan semester
+            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="What Group A electives do I have?">
+              Group A electives
             </button>
           </div>
 
@@ -279,7 +279,6 @@
     </div>
   </main>
 
-  <!-- Settings Modal -->
   <div id="settingsModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center">
     <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
       <div class="flex justify-between items-center mb-4">
@@ -308,7 +307,6 @@
     </div>
   </div>
 
-  <!-- History Modal -->
   <div id="historyModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center">
     <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
       <div class="flex justify-between items-center mb-4">
@@ -319,7 +317,6 @@
     </div>
   </div>
 
-  <!-- Account Modal -->
   <div id="accountModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center">
     <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
       <div class="flex justify-between items-center mb-4">
@@ -348,11 +345,9 @@
   </div>
 
   <script>
-    const API_URL = "/chat";
+    const API_URL = "http://127.0.0.1:5000/api/adviser";
+
     localStorage.setItem("msu_logged_in", "true");
-    //if (localStorage.getItem("msu_logged_in") !== "true") {
-    //  window.location.href = "../login/code.html";
-    //}
 
     const chatMessages = document.getElementById("chatMessages");
     const promptInput = document.getElementById("promptInput");
@@ -561,7 +556,7 @@
         return;
       }
 
-      chatHistory.forEach((msg, index) => {
+      chatHistory.forEach((msg) => {
         const item = document.createElement("div");
         item.className = "border rounded-xl p-3";
         item.innerHTML = `
@@ -586,21 +581,25 @@
         const response = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message })
+          body: JSON.stringify({
+            student_id: 1,
+            question: message
+          })
         });
 
         const data = await response.json();
         removeTypingMessage();
 
         if (!response.ok) {
-          addBotMessage(data.reply || "Something went wrong.");
+          addBotMessage(data.reply || data.error || "Something went wrong.");
           return;
         }
 
         addBotMessage(data.reply || "No response returned.");
       } catch (error) {
         removeTypingMessage();
-        addBotMessage("Could not connect to the backend. Make sure Flask is running on port 5000.");
+        console.error(error);
+        addBotMessage("Frontend fetch failed: " + error.message);
       } finally {
         sendBtn.disabled = false;
         promptInput.focus();
@@ -689,12 +688,12 @@
     closeAccountBtn.addEventListener("click", () => closeModal(accountModal));
 
     helpBtn.addEventListener("click", () => {
-      addBotMessage("You can ask about courses, prerequisites, semester planning, degree progress, registration, and advising support.", "Help");
+      addBotMessage("You can ask about classes, semester planning, electives, GPA, progress, and advising support.", "Help");
     });
 
     logoutBtn.addEventListener("click", () => {
       localStorage.removeItem("msu_logged_in");
-      window.location.href = "../login/code.html";
+      alert("Logged out.");
     });
 
     searchBtn.addEventListener("click", () => {
