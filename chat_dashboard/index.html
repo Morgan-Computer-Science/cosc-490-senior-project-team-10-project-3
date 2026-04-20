@@ -349,10 +349,10 @@
 
   <script>
     const API_URL = "https://theo-17-hg-5000.app.github.dev/chat";
-
-    if (localStorage.getItem("msu_logged_in") !== "true") {
-      window.location.href = "../login/code.html";
-    }
+    localStorage.setItem("msu_logged_in", "true");
+    //if (localStorage.getItem("msu_logged_in") !== "true") {
+    //  window.location.href = "../login/code.html";
+    //}
 
     const chatMessages = document.getElementById("chatMessages");
     const promptInput = document.getElementById("promptInput");
