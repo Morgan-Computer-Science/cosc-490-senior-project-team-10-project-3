@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 import sqlite3
 
 app = Flask(__name__)
@@ -106,23 +106,21 @@ def build_adviser_response(student: dict, progress: list, question: str):
 
         if recommended:
             sample = ", ".join(recommended[:5])
-            return (
-                f"{first_name}, based on your current record, a good next-semester plan is: {sample}."
-            )
+            return f"{first_name}, based on your current record, a good next-semester plan is: {sample}."
 
         return (
             f"{first_name}, you are close to finishing the standard sequence. "
             f"You should focus on any remaining electives and graduation requirements."
         )
 
-    return (
-        f"Hi {first_name}, I can help with class recommendations, semester planning, electives, and progress tracking."
-    )
+    return f"Hi {first_name}, I can help with class recommendations, semester planning, electives, and progress tracking."
 
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
-    return render_template("index.html")
+    return jsonify({
+        "message": "Backend is running. Open index.html separately in your browser."
+    })
 
 
 @app.route("/api/health", methods=["GET"])
