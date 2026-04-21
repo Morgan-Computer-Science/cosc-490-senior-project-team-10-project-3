@@ -1,458 +1,764 @@
-<script>
-  // IMPORTANT:
-  // Replace this with your actual Codespaces BACKEND port 5000 URL
-  // Example:
-  // const API_BASE_URL = "https://your-codespace-name-5000.app.github.dev";
-  const API_BASE_URL = "https://ubiquitous-yodel-x545r795x65qfvjv4-5000.app.github.dev";
-  const API_URL = `${API_BASE_URL}/api/adviser`;
-  const HEALTH_URL = `${API_BASE_URL}/api/health`;
-  const STUDENTS_URL = `${API_BASE_URL}/api/students`;
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>MSU CS Scholar - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 
-  const chatMessages = document.getElementById("chatMessages");
-  const promptInput = document.getElementById("promptInput");
-  const sendBtn = document.getElementById("sendBtn");
-  const clearChatBtn = document.getElementById("clearChatBtn");
-  const currentChatBtn = document.getElementById("currentChatBtn");
-  const historyBtn = document.getElementById("historyBtn");
-  const settingsBtn = document.getElementById("settingsBtn");
-  const helpBtn = document.getElementById("helpBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const searchBtn = document.getElementById("searchBtn");
-  const accountBtn = document.getElementById("accountBtn");
-  const attachBtn = document.getElementById("attachBtn");
-  const imageBtn = document.getElementById("imageBtn");
-  const micBtn = document.getElementById("micBtn");
-  const fileInput = document.getElementById("fileInput");
-  const imageInput = document.getElementById("imageInput");
-  const profileImageInput = document.getElementById("profileImageInput");
-
-  const quickButtons = document.querySelectorAll(".quick-prompt");
-
-  const settingsModal = document.getElementById("settingsModal");
-  const historyModal = document.getElementById("historyModal");
-  const accountModal = document.getElementById("accountModal");
-
-  const closeSettingsBtn = document.getElementById("closeSettingsBtn");
-  const closeHistoryBtn = document.getElementById("closeHistoryBtn");
-  const closeAccountBtn = document.getElementById("closeAccountBtn");
-
-  const themeSelect = document.getElementById("themeSelect");
-  const fontSizeSelect = document.getElementById("fontSizeSelect");
-  const historyList = document.getElementById("historyList");
-
-  const sidebarProfileImg = document.getElementById("sidebarProfileImg");
-  const sidebarUserName = document.getElementById("sidebarUserName");
-  const sidebarUserEmail = document.getElementById("sidebarUserEmail");
-
-  const accountProfileImg = document.getElementById("accountProfileImg");
-  const accountName = document.getElementById("accountName");
-  const accountEmail = document.getElementById("accountEmail");
-  const accountMajor = document.getElementById("accountMajor");
-  const accountMinor = document.getElementById("accountMinor");
-  const accountClassification = document.getElementById("accountClassification");
-  const accountAdvisor = document.getElementById("accountAdvisor");
-  const changeProfilePicBtn = document.getElementById("changeProfilePicBtn");
-  const profileCard = document.getElementById("profileCard");
-
-  const defaultAvatar = "data:image/svg+xml;utf8," + encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
-      <rect width="100%" height="100%" fill="#e2e8f0"/>
-      <text x="50%" y="54%" text-anchor="middle" font-size="34" fill="#475569" font-family="Arial">👤</text>
-    </svg>
-  `);
-
-  let chatHistory = JSON.parse(localStorage.getItem("msu_chat_history") || "[]");
-  let settings = JSON.parse(localStorage.getItem("msu_settings") || '{"theme":"light","fontSize":"16px"}');
-
-  function getProfile() {
-    return {
-      name: localStorage.getItem("msu_user_name") || "Student Name",
-      email: localStorage.getItem("msu_user_email") || "student@morgan.edu",
-      major: localStorage.getItem("msu_user_major") || "Computer Science",
-      minor: localStorage.getItem("msu_user_minor") || "N/A",
-      classification: localStorage.getItem("msu_user_classification") || "Student",
-      advisor: localStorage.getItem("msu_user_advisor") || "Not set",
-      picture: localStorage.getItem("msu_user_profile_pic") || defaultAvatar
-    };
-  }
-
-  function saveSettings() {
-    localStorage.setItem("msu_settings", JSON.stringify(settings));
-  }
-
-  function applySettings() {
-    document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(settings.theme);
-    document.body.style.fontSize = settings.fontSize;
-    themeSelect.value = settings.theme;
-    fontSizeSelect.value = settings.fontSize;
-  }
-
-  function renderProfile() {
-    const profile = getProfile();
-    sidebarUserName.textContent = profile.name;
-    sidebarUserEmail.textContent = profile.email;
-    sidebarProfileImg.src = profile.picture;
-
-    accountName.textContent = profile.name;
-    accountEmail.textContent = profile.email;
-    accountMajor.textContent = profile.major;
-    accountMinor.textContent = profile.minor || "N/A";
-    accountClassification.textContent = profile.classification;
-    accountAdvisor.textContent = profile.advisor || "Not set";
-    accountProfileImg.src = profile.picture;
-  }
-
-  function getTime() {
-    return new Date().toLocaleTimeString([], {
-      hour: "numeric",
-      minute: "2-digit"
-    });
-  }
-
-  function scrollToBottom() {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }
-
-  function saveChatHistory() {
-    localStorage.setItem("msu_chat_history", JSON.stringify(chatHistory));
-  }
-
-  function addUserMessage(text, skipSave = false) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "flex justify-end";
-    wrapper.innerHTML = `
-      <div class="max-w-[80%] bg-primary-container text-white p-5 rounded-2xl rounded-tr-none shadow-lg">
-        <p class="text-sm leading-relaxed whitespace-pre-wrap"></p>
-        <span class="text-[10px] text-on-primary-container mt-2 block text-right opacity-80">${getTime()}</span>
-      </div>
-    `;
-    wrapper.querySelector("p").textContent = text;
-    chatMessages.appendChild(wrapper);
-    scrollToBottom();
-
-    if (!skipSave) {
-      chatHistory.push({ role: "user", text, time: new Date().toLocaleString() });
-      saveChatHistory();
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "secondary-fixed": "#ffdbcc",
+            "error-container": "#ffdad6",
+            "on-tertiary-fixed-variant": "#00468c",
+            "primary-fixed-dim": "#b2c5ff",
+            "surface-container": "#eeeeee",
+            "on-tertiary": "#ffffff",
+            "on-primary-container": "#738aca",
+            "surface-container-high": "#e8e8e8",
+            "tertiary": "#000f27",
+            "surface-container-highest": "#e2e2e2",
+            "on-surface-variant": "#444650",
+            "on-background": "#1a1c1c",
+            "background": "#f9f9f9",
+            "on-secondary": "#ffffff",
+            "surface-bright": "#f9f9f9",
+            "primary-container": "#00205b",
+            "on-tertiary-container": "#598cdb",
+            "surface-dim": "#dadada",
+            "primary": "#000d2f",
+            "surface-container-low": "#f3f3f3",
+            "on-secondary-fixed": "#351000",
+            "surface-tint": "#455c99",
+            "inverse-on-surface": "#f1f1f1",
+            "secondary-fixed-dim": "#ffb694",
+            "on-primary": "#ffffff",
+            "surface": "#f9f9f9",
+            "error": "#ba1a1a",
+            "tertiary-container": "#00244d",
+            "on-error": "#ffffff",
+            "secondary": "#a14000",
+            "outline": "#757681",
+            "outline-variant": "#c5c6d1",
+            "on-secondary-fixed-variant": "#7b2f00",
+            "tertiary-fixed": "#d6e3ff",
+            "surface-container-lowest": "#ffffff",
+            "tertiary-fixed-dim": "#a9c7ff",
+            "inverse-surface": "#2f3131",
+            "on-tertiary-fixed": "#001b3d",
+            "surface-variant": "#e2e2e2",
+            "on-primary-fixed": "#001849",
+            "primary-fixed": "#dae2ff",
+            "secondary-container": "#fc6700",
+            "on-surface": "#1a1c1c",
+            "on-error-container": "#93000a",
+            "on-primary-fixed-variant": "#2d447f",
+            "on-secondary-container": "#541d00",
+            "inverse-primary": "#b2c5ff"
+          },
+          borderRadius: {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          fontFamily: {
+            "headline": ["Space Grotesk"],
+            "body": ["Manrope"],
+            "label": ["Manrope"]
+          }
+        }
+      }
     }
-  }
+  </script>
 
-  function addBotMessage(text, title = "MSU CS Scholar", skipSave = false) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "flex justify-start gap-4";
-    wrapper.innerHTML = `
-      <div class="w-8 h-8 rounded-lg bg-secondary-container flex items-center justify-center flex-shrink-0 mt-1">
-        <span class="material-symbols-outlined text-white text-sm">school</span>
-      </div>
-      <div class="max-w-[85%] bg-white p-6 rounded-2xl rounded-tl-none border border-slate-200/20 shadow-sm">
-        <h3 class="font-headline font-bold text-primary mb-2"></h3>
-        <p class="text-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap"></p>
-        <span class="text-[10px] text-slate-400 mt-4 block opacity-80">${getTime()}</span>
-      </div>
-    `;
-    wrapper.querySelector("h3").textContent = title;
-    wrapper.querySelector("p").textContent = text;
-    chatMessages.appendChild(wrapper);
-    scrollToBottom();
-
-    if (!skipSave) {
-      chatHistory.push({ role: "bot", text, title, time: new Date().toLocaleString() });
-      saveChatHistory();
+  <style>
+    body { font-family: 'Manrope', sans-serif; }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
     }
-  }
+    .modal-backdrop {
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(4px);
+    }
+  </style>
+</head>
 
-  function addTypingMessage() {
-    const wrapper = document.createElement("div");
-    wrapper.className = "flex justify-start gap-4";
-    wrapper.id = "typingBubble";
-    wrapper.innerHTML = `
-      <div class="w-8 h-8 rounded-lg bg-secondary-container flex items-center justify-center flex-shrink-0 mt-1">
-        <span class="material-symbols-outlined text-white text-sm">school</span>
+<body class="bg-background text-on-surface flex h-screen overflow-hidden">
+  <input type="file" id="fileInput" class="hidden" />
+  <input type="file" id="imageInput" accept="image/*" class="hidden" />
+  <input type="file" id="profileImageInput" accept="image/*" class="hidden" />
+
+  <aside class="fixed left-0 top-0 h-full z-40 p-4 space-y-6 bg-[#eeeeee] w-72 flex flex-col font-medium text-sm">
+    <div class="flex items-center gap-3 px-2 mb-4">
+      <div class="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-white">
+        <span class="text-sm font-bold">MSU</span>
       </div>
-      <div class="bg-surface-container-low px-5 py-3 rounded-2xl rounded-tl-none flex items-center gap-2">
-        <div class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse"></div>
-        <div class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse"></div>
-        <div class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse"></div>
-        <span class="text-[10px] font-bold text-secondary ml-1 uppercase tracking-tight">Thinking...</span>
+      <div>
+        <h1 class="font-['Space_Grotesk'] font-extrabold text-[#00205B] text-lg leading-tight">CS Scholar</h1>
+        <p class="text-[10px] uppercase tracking-widest text-slate-500">Morgan State University</p>
       </div>
-    `;
-    chatMessages.appendChild(wrapper);
-    scrollToBottom();
-  }
+    </div>
 
-  function removeTypingMessage() {
-    const typingBubble = document.getElementById("typingBubble");
-    if (typingBubble) typingBubble.remove();
-  }
+    <nav class="flex-1 space-y-2">
+      <button id="currentChatBtn" class="w-full flex items-center gap-3 px-4 py-3 bg-[#e2e2e2] text-[#00205B] font-bold rounded-lg transition-all">
+        <span class="material-symbols-outlined">chat</span>
+        <span>Current Chat</span>
+      </button>
 
-  function renderSavedChat() {
-    if (chatHistory.length === 0) return;
+      <button id="historyBtn" class="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-[#00205B] hover:bg-[#e2e2e2] transition-all">
+        <span class="material-symbols-outlined">history</span>
+        <span>History</span>
+      </button>
 
-    chatMessages.innerHTML = `
+      <button id="settingsBtn" class="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-[#00205B] hover:bg-[#e2e2e2] transition-all">
+        <span class="material-symbols-outlined">settings</span>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <div class="pt-4 border-t border-slate-300/30">
+      <button id="clearChatBtn" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/50 text-[#00205B] rounded-lg hover:bg-white transition-all mb-4">
+        <span class="material-symbols-outlined text-sm">delete_sweep</span>
+        <span>Clear Chat</span>
+      </button>
+
+      <div class="space-y-1">
+        <button id="helpBtn" class="w-full flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-[#00205B] transition-all">
+          <span class="material-symbols-outlined">help</span>
+          <span>Help</span>
+        </button>
+
+        <button id="logoutBtn" class="w-full flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-[#00205B] transition-all">
+          <span class="material-symbols-outlined">logout</span>
+          <span>Logout</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="profileCard" class="flex items-center gap-3 p-3 bg-white rounded-xl mt-4 cursor-pointer">
+      <img id="sidebarProfileImg" class="w-10 h-10 rounded-lg object-cover bg-slate-200" src="" alt="Profile Picture" />
+      <div class="overflow-hidden">
+        <p id="sidebarUserName" class="font-bold text-xs truncate">Student Name</p>
+        <p id="sidebarUserEmail" class="text-[10px] text-slate-500">student@morgan.edu</p>
+      </div>
+    </div>
+  </aside>
+
+  <main class="flex-1 ml-72 flex flex-col h-full relative">
+    <header class="flex justify-between items-center w-full px-6 py-4 bg-slate-50/80 backdrop-blur-xl shadow-[0_12px_32px_rgba(0,0,0,0.04)] z-30 sticky top-0">
+      <div class="flex items-center gap-4">
+        <h2 class="text-xl font-black text-[#00205B] tracking-tighter font-['Space_Grotesk']">MSU CS Scholar</h2>
+        <div class="bg-slate-200/50 h-6 w-[1px]"></div>
+        <span class="text-slate-600 text-sm font-medium">Academic Advising Assistant</span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="searchBtn" class="p-2 rounded-full hover:bg-slate-200/60 transition-colors active:scale-95 duration-200">
+          <span class="material-symbols-outlined text-slate-600">search</span>
+        </button>
+
+        <button id="accountBtn" class="p-2 rounded-full hover:bg-slate-200/60 transition-colors active:scale-95 duration-200">
+          <span class="material-symbols-outlined text-slate-600">account_circle</span>
+        </button>
+      </div>
+    </header>
+
+    <section id="chatMessages" class="flex-1 overflow-y-auto p-8 space-y-8 max-w-4xl mx-auto w-full">
       <div class="flex justify-center">
         <span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold bg-slate-100 px-3 py-1 rounded-full">
-          Restored Chat
+          Today • MSU CS Scholar
         </span>
       </div>
-    `;
 
-    chatHistory.forEach((msg) => {
-      if (msg.role === "user") {
-        addUserMessage(msg.text, true);
-      } else {
-        addBotMessage(msg.text, msg.title || "MSU CS Scholar", true);
-      }
-    });
-  }
+      <div class="flex justify-start gap-4" id="welcomeBlock">
+        <div class="w-8 h-8 rounded-lg bg-secondary-container flex items-center justify-center flex-shrink-0 mt-1">
+          <span class="material-symbols-outlined text-white text-sm">school</span>
+        </div>
+        <div class="max-w-[85%] bg-white p-6 rounded-2xl rounded-tl-none border border-slate-200/20 shadow-sm">
+          <h3 class="font-headline font-bold text-primary mb-2">Welcome</h3>
+          <p class="text-sm text-on-surface-variant leading-relaxed mb-4">
+            Ask me about prerequisites, course planning, scheduling, or graduation progress.
+          </p>
 
-  function renderHistoryModal() {
-    historyList.innerHTML = "";
+          <div class="flex gap-2 mt-4 flex-wrap">
+            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="What classes should I take next semester?">
+              Show classes
+            </button>
+            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="Show my progress">
+              Show progress
+            </button>
+            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="What Group A electives do I have?">
+              Group A electives
+            </button>
+          </div>
 
-    if (chatHistory.length === 0) {
-      historyList.innerHTML = `<p class="text-slate-500">No saved chat history yet.</p>`;
-      return;
+          <span class="text-[10px] text-slate-400 mt-4 block opacity-80">Ready</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="p-6 bg-slate-50 border-t border-slate-200/50">
+      <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-2 border border-slate-200/50">
+          <div class="flex items-end gap-2">
+            <div class="flex flex-col gap-1 px-2 pb-2">
+              <button id="attachBtn" class="p-2 text-slate-400 hover:text-primary transition-colors">
+                <span class="material-symbols-outlined">attach_file</span>
+              </button>
+              <button id="imageBtn" class="p-2 text-slate-400 hover:text-primary transition-colors">
+                <span class="material-symbols-outlined">image</span>
+              </button>
+            </div>
+
+            <textarea
+              id="promptInput"
+              class="flex-1 bg-transparent border-none focus:ring-0 text-sm py-3 px-2 resize-none placeholder:text-slate-400"
+              placeholder="Ask about prerequisites, registration, or your degree audit..."
+              rows="1"
+            ></textarea>
+
+            <div class="flex items-center gap-2 p-2">
+              <button id="micBtn" class="p-2 text-slate-400 hover:text-secondary transition-colors">
+                <span class="material-symbols-outlined">mic</span>
+              </button>
+              <button id="sendBtn" class="bg-secondary-container text-white p-3 rounded-lg shadow-md hover:shadow-lg active:scale-95 transition-all">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">send</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-center text-[10px] text-slate-400 mt-4 uppercase tracking-[0.2em]">
+          MSU CS Scholar can make mistakes. Verify critical graduation requirements with your official advisor.
+        </p>
+      </div>
+    </footer>
+  </main>
+
+  <div id="settingsModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold text-primary">Settings</h3>
+        <button id="closeSettingsBtn" class="text-slate-500 text-xl">&times;</button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold mb-2">Theme</label>
+          <select id="themeSelect" class="w-full border rounded-lg px-3 py-2">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold mb-2">Font Size</label>
+          <select id="fontSizeSelect" class="w-full border rounded-lg px-3 py-2">
+            <option value="14px">Small</option>
+            <option value="16px">Medium</option>
+            <option value="18px">Large</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="historyModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold text-primary">Chat History</h3>
+        <button id="closeHistoryBtn" class="text-slate-500 text-xl">&times;</button>
+      </div>
+      <div id="historyList" class="space-y-3 text-sm"></div>
+    </div>
+  </div>
+
+  <div id="accountModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold text-primary">Student Profile</h3>
+        <button id="closeAccountBtn" class="text-slate-500 text-xl">&times;</button>
+      </div>
+
+      <div class="space-y-4">
+        <div class="flex items-center gap-4">
+          <img id="accountProfileImg" class="w-16 h-16 rounded-xl object-cover bg-slate-200" src="" alt="Profile" />
+          <button id="changeProfilePicBtn" class="px-4 py-2 bg-slate-200 rounded-lg text-sm font-semibold">
+            Change Picture
+          </button>
+        </div>
+
+        <div class="space-y-2 text-sm">
+          <p><span class="font-bold">Name:</span> <span id="accountName"></span></p>
+          <p><span class="font-bold">Email:</span> <span id="accountEmail"></span></p>
+          <p><span class="font-bold">Major:</span> <span id="accountMajor"></span></p>
+          <p><span class="font-bold">Minor:</span> <span id="accountMinor"></span></p>
+          <p><span class="font-bold">Classification:</span> <span id="accountClassification"></span></p>
+          <p><span class="font-bold">Advisor:</span> <span id="accountAdvisor"></span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE_URL = "https://ubiquitous-yodel-x545r795x65qfvjv4-5000.app.github.dev";
+    const API_URL = `${API_BASE_URL}/api/adviser`;
+    const HEALTH_URL = `${API_BASE_URL}/api/health`;
+
+    const chatMessages = document.getElementById("chatMessages");
+    const promptInput = document.getElementById("promptInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const clearChatBtn = document.getElementById("clearChatBtn");
+    const currentChatBtn = document.getElementById("currentChatBtn");
+    const historyBtn = document.getElementById("historyBtn");
+    const settingsBtn = document.getElementById("settingsBtn");
+    const helpBtn = document.getElementById("helpBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const searchBtn = document.getElementById("searchBtn");
+    const accountBtn = document.getElementById("accountBtn");
+    const attachBtn = document.getElementById("attachBtn");
+    const imageBtn = document.getElementById("imageBtn");
+    const micBtn = document.getElementById("micBtn");
+    const fileInput = document.getElementById("fileInput");
+    const imageInput = document.getElementById("imageInput");
+    const profileImageInput = document.getElementById("profileImageInput");
+
+    const quickButtons = document.querySelectorAll(".quick-prompt");
+
+    const settingsModal = document.getElementById("settingsModal");
+    const historyModal = document.getElementById("historyModal");
+    const accountModal = document.getElementById("accountModal");
+
+    const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+    const closeHistoryBtn = document.getElementById("closeHistoryBtn");
+    const closeAccountBtn = document.getElementById("closeAccountBtn");
+
+    const themeSelect = document.getElementById("themeSelect");
+    const fontSizeSelect = document.getElementById("fontSizeSelect");
+    const historyList = document.getElementById("historyList");
+
+    const sidebarProfileImg = document.getElementById("sidebarProfileImg");
+    const sidebarUserName = document.getElementById("sidebarUserName");
+    const sidebarUserEmail = document.getElementById("sidebarUserEmail");
+
+    const accountProfileImg = document.getElementById("accountProfileImg");
+    const accountName = document.getElementById("accountName");
+    const accountEmail = document.getElementById("accountEmail");
+    const accountMajor = document.getElementById("accountMajor");
+    const accountMinor = document.getElementById("accountMinor");
+    const accountClassification = document.getElementById("accountClassification");
+    const accountAdvisor = document.getElementById("accountAdvisor");
+    const changeProfilePicBtn = document.getElementById("changeProfilePicBtn");
+    const profileCard = document.getElementById("profileCard");
+
+    const defaultAvatar = "data:image/svg+xml;utf8," + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+        <rect width="100%" height="100%" fill="#e2e8f0"/>
+        <text x="50%" y="54%" text-anchor="middle" font-size="34" fill="#475569" font-family="Arial">👤</text>
+      </svg>
+    `);
+
+    let chatHistory = JSON.parse(localStorage.getItem("msu_chat_history") || "[]");
+    let settings = JSON.parse(localStorage.getItem("msu_settings") || '{"theme":"light","fontSize":"16px"}');
+
+    function getProfile() {
+      return {
+        name: localStorage.getItem("msu_user_name") || "Student Name",
+        email: localStorage.getItem("msu_user_email") || "student@morgan.edu",
+        major: localStorage.getItem("msu_user_major") || "Computer Science",
+        minor: localStorage.getItem("msu_user_minor") || "N/A",
+        classification: localStorage.getItem("msu_user_classification") || "Student",
+        advisor: localStorage.getItem("msu_user_advisor") || "Not set",
+        picture: localStorage.getItem("msu_user_profile_pic") || defaultAvatar
+      };
     }
 
-    chatHistory.forEach((msg) => {
-      const item = document.createElement("div");
-      item.className = "border rounded-xl p-3";
-      item.innerHTML = `
-        <p class="text-xs uppercase tracking-wider text-slate-400 font-bold mb-1">${msg.role}</p>
-        <p class="text-sm text-slate-700 whitespace-pre-wrap">${msg.text}</p>
-        <p class="text-[11px] text-slate-400 mt-2">${msg.time || ""}</p>
-      `;
-      historyList.appendChild(item);
-    });
-  }
-
-  async function checkBackendStatus() {
-    try {
-      const response = await fetch(HEALTH_URL);
-      const data = await response.json();
-
-      if (response.ok) {
-        console.log("Backend OK:", data);
-      } else {
-        console.warn("Backend responded with an error:", data);
-      }
-    } catch (error) {
-      console.error("Backend health check failed:", error);
-      addBotMessage(
-        "Backend connection check failed. Make sure your Flask app is running on port 5000 and API_BASE_URL points to the 5000 port.",
-        "Connection Warning",
-        true
-      );
+    function saveSettings() {
+      localStorage.setItem("msu_settings", JSON.stringify(settings));
     }
-  }
 
-  async function sendMessage(customText = null) {
-    const message = (customText || promptInput.value).trim();
-    if (!message) return;
+    function applySettings() {
+      document.documentElement.classList.remove("light", "dark");
+      document.documentElement.classList.add(settings.theme);
+      document.body.style.fontSize = settings.fontSize;
+      themeSelect.value = settings.theme;
+      fontSizeSelect.value = settings.fontSize;
+    }
 
-    addUserMessage(message);
-    promptInput.value = "";
-    sendBtn.disabled = true;
-    addTypingMessage();
+    function renderProfile() {
+      const profile = getProfile();
+      sidebarUserName.textContent = profile.name;
+      sidebarUserEmail.textContent = profile.email;
+      sidebarProfileImg.src = profile.picture;
 
-    try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          student_id: 1,
-          question: message
-        })
+      accountName.textContent = profile.name;
+      accountEmail.textContent = profile.email;
+      accountMajor.textContent = profile.major;
+      accountMinor.textContent = profile.minor || "N/A";
+      accountClassification.textContent = profile.classification;
+      accountAdvisor.textContent = profile.advisor || "Not set";
+      accountProfileImg.src = profile.picture;
+    }
+
+    function getTime() {
+      return new Date().toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit"
       });
+    }
 
-      let data = {};
-      try {
-        data = await response.json();
-      } catch {
-        data = {};
+    function scrollToBottom() {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function saveChatHistory() {
+      localStorage.setItem("msu_chat_history", JSON.stringify(chatHistory));
+    }
+
+    function addUserMessage(text, skipSave = false) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "flex justify-end";
+      wrapper.innerHTML = `
+        <div class="max-w-[80%] bg-primary-container text-white p-5 rounded-2xl rounded-tr-none shadow-lg">
+          <p class="text-sm leading-relaxed whitespace-pre-wrap"></p>
+          <span class="text-[10px] text-on-primary-container mt-2 block text-right opacity-80">${getTime()}</span>
+        </div>
+      `;
+      wrapper.querySelector("p").textContent = text;
+      chatMessages.appendChild(wrapper);
+      scrollToBottom();
+
+      if (!skipSave) {
+        chatHistory.push({ role: "user", text, time: new Date().toLocaleString() });
+        saveChatHistory();
       }
+    }
 
-      removeTypingMessage();
+    function addBotMessage(text, title = "MSU CS Scholar", skipSave = false) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "flex justify-start gap-4";
+      wrapper.innerHTML = `
+        <div class="w-8 h-8 rounded-lg bg-secondary-container flex items-center justify-center flex-shrink-0 mt-1">
+          <span class="material-symbols-outlined text-white text-sm">school</span>
+        </div>
+        <div class="max-w-[85%] bg-white p-6 rounded-2xl rounded-tl-none border border-slate-200/20 shadow-sm">
+          <h3 class="font-headline font-bold text-primary mb-2"></h3>
+          <p class="text-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap"></p>
+          <span class="text-[10px] text-slate-400 mt-4 block opacity-80">${getTime()}</span>
+        </div>
+      `;
+      wrapper.querySelector("h3").textContent = title;
+      wrapper.querySelector("p").textContent = text;
+      chatMessages.appendChild(wrapper);
+      scrollToBottom();
 
-      if (!response.ok) {
-        addBotMessage(data.reply || data.error || `Server error (${response.status})`);
+      if (!skipSave) {
+        chatHistory.push({ role: "bot", text, title, time: new Date().toLocaleString() });
+        saveChatHistory();
+      }
+    }
+
+    function addTypingMessage() {
+      const wrapper = document.createElement("div");
+      wrapper.className = "flex justify-start gap-4";
+      wrapper.id = "typingBubble";
+      wrapper.innerHTML = `
+        <div class="w-8 h-8 rounded-lg bg-secondary-container flex items-center justify-center flex-shrink-0 mt-1">
+          <span class="material-symbols-outlined text-white text-sm">school</span>
+        </div>
+        <div class="bg-surface-container-low px-5 py-3 rounded-2xl rounded-tl-none flex items-center gap-2">
+          <div class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse"></div>
+          <div class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse"></div>
+          <div class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse"></div>
+          <span class="text-[10px] font-bold text-secondary ml-1 uppercase tracking-tight">Thinking...</span>
+        </div>
+      `;
+      chatMessages.appendChild(wrapper);
+      scrollToBottom();
+    }
+
+    function removeTypingMessage() {
+      const typingBubble = document.getElementById("typingBubble");
+      if (typingBubble) typingBubble.remove();
+    }
+
+    function renderSavedChat() {
+      if (chatHistory.length === 0) return;
+
+      chatMessages.innerHTML = `
+        <div class="flex justify-center">
+          <span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold bg-slate-100 px-3 py-1 rounded-full">
+            Restored Chat
+          </span>
+        </div>
+      `;
+
+      chatHistory.forEach((msg) => {
+        if (msg.role === "user") {
+          addUserMessage(msg.text, true);
+        } else {
+          addBotMessage(msg.text, msg.title || "MSU CS Scholar", true);
+        }
+      });
+    }
+
+    function renderHistoryModal() {
+      historyList.innerHTML = "";
+
+      if (chatHistory.length === 0) {
+        historyList.innerHTML = `<p class="text-slate-500">No saved chat history yet.</p>`;
         return;
       }
 
-      addBotMessage(data.reply || "No response returned.");
-    } catch (error) {
-      removeTypingMessage();
-      console.error(error);
-      addBotMessage("Frontend fetch failed: " + error.message);
-    } finally {
-      sendBtn.disabled = false;
-      promptInput.focus();
-    }
-  }
-
-  function openModal(modal) {
-    modal.classList.remove("hidden");
-    modal.classList.add("flex");
-  }
-
-  function closeModal(modal) {
-    modal.classList.add("hidden");
-    modal.classList.remove("flex");
-  }
-
-  function startVoiceInput() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      alert("Voice input is not supported in this browser.");
-      return;
+      chatHistory.forEach((msg) => {
+        const item = document.createElement("div");
+        item.className = "border rounded-xl p-3";
+        item.innerHTML = `
+          <p class="text-xs uppercase tracking-wider text-slate-400 font-bold mb-1">${msg.role}</p>
+          <p class="text-sm text-slate-700 whitespace-pre-wrap">${msg.text}</p>
+          <p class="text-[11px] text-slate-400 mt-2">${msg.time || ""}</p>
+        `;
+        historyList.appendChild(item);
+      });
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
+    async function checkBackendStatus() {
+      try {
+        const response = await fetch(HEALTH_URL);
+        const data = await response.json();
 
-    recognition.start();
-
-    recognition.onresult = function(event) {
-      const transcript = event.results[0][0].transcript;
-      promptInput.value = transcript;
-      promptInput.focus();
-    };
-
-    recognition.onerror = function() {
-      alert("Voice input failed. Please try again.");
-    };
-  }
-
-  sendBtn.addEventListener("click", () => sendMessage());
-
-  promptInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
+        if (response.ok) {
+          console.log("Backend OK:", data);
+        } else {
+          console.warn("Backend responded with an error:", data);
+        }
+      } catch (error) {
+        console.error("Backend health check failed:", error);
+        addBotMessage(
+          "Backend connection check failed. Make sure your Flask app is running on port 5000.",
+          "Connection Warning",
+          true
+        );
+      }
     }
-  });
 
-  quickButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      sendMessage(btn.dataset.prompt);
+    async function sendMessage(customText = null) {
+      const message = (customText || promptInput.value).trim();
+      if (!message) return;
+
+      addUserMessage(message);
+      promptInput.value = "";
+      sendBtn.disabled = true;
+      addTypingMessage();
+
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            student_id: 1,
+            question: message
+          })
+        });
+
+        let data = {};
+        try {
+          data = await response.json();
+        } catch {
+          data = {};
+        }
+
+        removeTypingMessage();
+
+        if (!response.ok) {
+          addBotMessage(data.reply || data.error || `Server error (${response.status})`);
+          return;
+        }
+
+        addBotMessage(data.reply || "No response returned.");
+      } catch (error) {
+        removeTypingMessage();
+        console.error(error);
+        addBotMessage("Frontend fetch failed: " + error.message);
+      } finally {
+        sendBtn.disabled = false;
+        promptInput.focus();
+      }
+    }
+
+    function openModal(modal) {
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeModal(modal) {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function startVoiceInput() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        alert("Voice input is not supported in this browser.");
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.start();
+
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        promptInput.value = transcript;
+        promptInput.focus();
+      };
+
+      recognition.onerror = function() {
+        alert("Voice input failed. Please try again.");
+      };
+    }
+
+    sendBtn.addEventListener("click", () => sendMessage());
+
+    promptInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
     });
-  });
 
-  clearChatBtn.addEventListener("click", () => {
-    chatHistory = [];
-    saveChatHistory();
-    chatMessages.innerHTML = `
-      <div class="flex justify-center">
-        <span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold bg-slate-100 px-3 py-1 rounded-full">
-          Chat cleared
-        </span>
-      </div>
-    `;
-  });
+    quickButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        sendMessage(btn.dataset.prompt);
+      });
+    });
 
-  currentChatBtn.addEventListener("click", () => {
-    chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: "smooth" });
-    promptInput.focus();
-  });
+    clearChatBtn.addEventListener("click", () => {
+      chatHistory = [];
+      saveChatHistory();
+      chatMessages.innerHTML = `
+        <div class="flex justify-center">
+          <span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold bg-slate-100 px-3 py-1 rounded-full">
+            Chat cleared
+          </span>
+        </div>
+      `;
+    });
 
-  historyBtn.addEventListener("click", () => {
-    renderHistoryModal();
-    openModal(historyModal);
-  });
+    currentChatBtn.addEventListener("click", () => {
+      chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: "smooth" });
+      promptInput.focus();
+    });
 
-  settingsBtn.addEventListener("click", () => {
-    openModal(settingsModal);
-  });
+    historyBtn.addEventListener("click", () => {
+      renderHistoryModal();
+      openModal(historyModal);
+    });
 
-  closeSettingsBtn.addEventListener("click", () => closeModal(settingsModal));
-  closeHistoryBtn.addEventListener("click", () => closeModal(historyModal));
-  closeAccountBtn.addEventListener("click", () => closeModal(accountModal));
+    settingsBtn.addEventListener("click", () => {
+      openModal(settingsModal);
+    });
 
-  helpBtn.addEventListener("click", () => {
-    addBotMessage("You can ask about classes, semester planning, electives, GPA, progress, and advising support.", "Help");
-  });
+    closeSettingsBtn.addEventListener("click", () => closeModal(settingsModal));
+    closeHistoryBtn.addEventListener("click", () => closeModal(historyModal));
+    closeAccountBtn.addEventListener("click", () => closeModal(accountModal));
 
-  logoutBtn.addEventListener("click", () => {
-    alert("Logged out.");
-  });
+    helpBtn.addEventListener("click", () => {
+      addBotMessage("You can ask about classes, semester planning, electives, GPA, progress, and advising support.", "Help");
+    });
 
-  searchBtn.addEventListener("click", () => {
-    promptInput.focus();
-    promptInput.scrollIntoView({ behavior: "smooth", block: "center" });
-  });
+    logoutBtn.addEventListener("click", () => {
+      alert("Logged out.");
+    });
 
-  accountBtn.addEventListener("click", () => {
-    renderProfile();
-    openModal(accountModal);
-  });
+    searchBtn.addEventListener("click", () => {
+      promptInput.focus();
+      promptInput.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
 
-  profileCard.addEventListener("click", () => {
-    renderProfile();
-    openModal(accountModal);
-  });
-
-  attachBtn.addEventListener("click", () => {
-    fileInput.click();
-  });
-
-  imageBtn.addEventListener("click", () => {
-    imageInput.click();
-  });
-
-  micBtn.addEventListener("click", () => {
-    startVoiceInput();
-  });
-
-  fileInput.addEventListener("change", () => {
-    if (fileInput.files.length > 0) {
-      addBotMessage(`Selected file: ${fileInput.files[0].name}`, "File Attached");
-    }
-  });
-
-  imageInput.addEventListener("change", () => {
-    if (imageInput.files.length > 0) {
-      addBotMessage(`Selected image: ${imageInput.files[0].name}`, "Image Attached");
-    }
-  });
-
-  changeProfilePicBtn.addEventListener("click", () => {
-    profileImageInput.click();
-  });
-
-  profileImageInput.addEventListener("change", () => {
-    const file = profileImageInput.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      localStorage.setItem("msu_user_profile_pic", e.target.result);
+    accountBtn.addEventListener("click", () => {
       renderProfile();
-    };
-    reader.readAsDataURL(file);
-  });
-
-  themeSelect.addEventListener("change", () => {
-    settings.theme = themeSelect.value;
-    saveSettings();
-    applySettings();
-  });
-
-  fontSizeSelect.addEventListener("change", () => {
-    settings.fontSize = fontSizeSelect.value;
-    saveSettings();
-    applySettings();
-  });
-
-  [settingsModal, historyModal, accountModal].forEach((modal) => {
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) closeModal(modal);
+      openModal(accountModal);
     });
-  });
 
-  applySettings();
-  renderProfile();
-  renderSavedChat();
-  checkBackendStatus();
-</script>
+    profileCard.addEventListener("click", () => {
+      renderProfile();
+      openModal(accountModal);
+    });
+
+    attachBtn.addEventListener("click", () => {
+      fileInput.click();
+    });
+
+    imageBtn.addEventListener("click", () => {
+      imageInput.click();
+    });
+
+    micBtn.addEventListener("click", () => {
+      startVoiceInput();
+    });
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length > 0) {
+        addBotMessage(`Selected file: ${fileInput.files[0].name}`, "File Attached");
+      }
+    });
+
+    imageInput.addEventListener("change", () => {
+      if (imageInput.files.length > 0) {
+        addBotMessage(`Selected image: ${imageInput.files[0].name}`, "Image Attached");
+      }
+    });
+
+    changeProfilePicBtn.addEventListener("click", () => {
+      profileImageInput.click();
+    });
+
+    profileImageInput.addEventListener("change", () => {
+      const file = profileImageInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        localStorage.setItem("msu_user_profile_pic", e.target.result);
+        renderProfile();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    themeSelect.addEventListener("change", () => {
+      settings.theme = themeSelect.value;
+      saveSettings();
+      applySettings();
+    });
+
+    fontSizeSelect.addEventListener("change", () => {
+      settings.fontSize = fontSizeSelect.value;
+      saveSettings();
+      applySettings();
+    });
+
+    [settingsModal, historyModal, accountModal].forEach((modal) => {
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeModal(modal);
+      });
+    });
+
+    applySettings();
+    renderProfile();
+    renderSavedChat();
+    checkBackendStatus();
+  </script>
+</body>
+</html>
