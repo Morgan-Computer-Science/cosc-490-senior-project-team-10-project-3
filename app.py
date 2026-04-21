@@ -1,6 +1,18 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import sqlite3
+
+# Try to use the richer advising engine if available.
+# This prevents the whole backend from crashing if advising_ai.py
+# depends on streamlit / plotly / google-generativeai that are not installed.
+try:
+    from advising_ai import AcademicAdvisor
+    advisor_engine = AcademicAdvisor()
+    ADVISOR_ENGINE_AVAILABLE = True
+except Exception as e:
+    advisor_engine = None
+    ADVISOR_ENGINE_AVAILABLE = False
+    ADVISOR_ENGINE_ERROR = str(e)
 
 app = Flask(__name__)
 CORS(app)
@@ -68,7 +80,7 @@ def get_elective_choices(group_code: str):
     return [dict(r) for r in rows]
 
 
-def build_adviser_response(student: dict, progress: list, question: str):
+def build_database_reply(student: dict, progress: list, question: str):
     q = question.lower()
     first_name = student["first_name"]
     completed_codes = {row["completed_course_code"] for row in progress}
@@ -76,7 +88,7 @@ def build_adviser_response(student: dict, progress: list, question: str):
     if "gpa" in q:
         return (
             f"{first_name}, your GPA is not stored in this demo database yet. "
-            f"You currently have {student['credits_earned']} earned credits and you are listed as a "
+            f"You currently have {student['credits_earned']} earned credits and are listed as a "
             f"{student['class_level']} in semester {student['current_semester']}."
         )
 
@@ -95,6 +107,27 @@ def build_adviser_response(student: dict, progress: list, question: str):
             return "I could not find any Group A electives in the database."
         sample = ", ".join([row["course_code"] for row in electives[:6]])
         return f"Some Group A elective choices are {sample}."
+
+    if "group b" in q:
+        electives = get_elective_choices("B")
+        if not electives:
+            return "I could not find any Group B electives in the database."
+        sample = ", ".join([row["course_code"] for row in electives[:6]])
+        return f"Some Group B elective choices are {sample}."
+
+    if "group c" in q:
+        electives = get_elective_choices("C")
+        if not electives:
+            return "I could not find any Group C electives in the database."
+        sample = ", ".join([row["course_code"] for row in electives[:6]])
+        return f"Some Group C elective choices are {sample}."
+
+    if "group d" in q:
+        electives = get_elective_choices("D")
+        if not electives:
+            return "I could not find any Group D electives in the database."
+        sample = ", ".join([row["course_code"] for row in electives[:6]])
+        return f"Some Group D elective choices are {sample}."
 
     if "classes" in q or "take" in q or "schedule" in q or "semester" in q or "plan" in q:
         next_semester = min(student["current_semester"] + 1, 8)
@@ -115,19 +148,82 @@ def build_adviser_response(student: dict, progress: list, question: str):
             f"You should focus on any remaining electives and graduation requirements."
         )
 
-    return f"Hi {first_name}, I can help with class recommendations, semester planning, electives, and progress tracking."
+    return (
+        f"Hi {first_name}, I can help with class recommendations, semester planning, "
+        f"electives, and progress tracking."
+    )
+
+
+def build_enhanced_reply(student: dict, progress: list, question: str):
+    """
+    Uses the DB-driven reply first, then adds optional AcademicAdvisor insights
+    when the advising_ai.py engine is available.
+    """
+    base_reply = build_database_reply(student, progress, question)
+
+    if not ADVISOR_ENGINE_AVAILABLE or advisor_engine is None:
+        return base_reply
+
+    q = question.lower()
+    extra_parts = []
+
+    try:
+        if any(word in q for word in ["degree", "graduate", "graduation", "credits", "remaining"]):
+            metrics = advisor_engine.calculate_degree_progress()
+            extra_parts.append(
+                f" Demo advisor summary: about {metrics['total_credits']} completed credits, "
+                f"{metrics['remaining_credits']} remaining, and an estimated GPA of {metrics['gpa']:.2f}."
+            )
+
+        if any(word in q for word in ["schedule", "conflict", "availability", "work", "time"]):
+            schedules = advisor_engine.find_conflict_free_schedules(question)
+            if schedules:
+                best = schedules[0]
+                extra_parts.append(
+                    f" Suggested schedule option: {best['name']} with "
+                    f"{', '.join(best['courses'])}. Reason: {best['reasoning']}."
+                )
+
+        if "availability" in q:
+            availability_text = advisor_engine.format_availability_string()
+            extra_parts.append(" Weekly availability snapshot:\n" + availability_text)
+
+    except Exception:
+        # If the advanced engine fails for any reason, still return the DB reply.
+        return base_reply
+
+    if extra_parts:
+        return base_reply + "\n\n" + "".join(extra_parts)
+
+    return base_reply
 
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({
-        "message": "Backend is running. Open index.html separately in your browser."
-    })
+    response = {
+        "message": "Backend is running. Open index.html separately in your browser.",
+        "adviser_endpoint": "/api/adviser",
+        "students_endpoint": "/api/students",
+        "health_endpoint": "/api/health",
+        "advisor_engine_available": ADVISOR_ENGINE_AVAILABLE
+    }
+
+    if not ADVISOR_ENGINE_AVAILABLE:
+        response["advisor_engine_note"] = "AcademicAdvisor could not be loaded. Database mode is still active."
+
+    return jsonify(response)
 
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "message": "Backend is running"})
+    data = {
+        "status": "ok",
+        "message": "Backend is running",
+        "advisor_engine_available": ADVISOR_ENGINE_AVAILABLE
+    }
+    if not ADVISOR_ENGINE_AVAILABLE:
+        data["advisor_engine_note"] = "AcademicAdvisor not loaded"
+    return jsonify(data)
 
 
 @app.route("/api/students", methods=["GET"])
@@ -169,8 +265,9 @@ def electives(group_code):
 def adviser():
     data = request.get_json(silent=True) or {}
 
-    student_id = data.get("student_id", 1)
-    question = str(data.get("question", "")).strip()
+    # Frontend can send either "question" or "message"
+    question = str(data.get("question") or data.get("message") or "").strip()
+    student_id = int(data.get("student_id", 1))
 
     if not question:
         return jsonify({"reply": "Please enter a question for the adviser."}), 400
@@ -180,12 +277,13 @@ def adviser():
         return jsonify({"reply": "Student not found."}), 404
 
     progress = get_student_progress(student_id)
-    reply = build_adviser_response(student, progress, question)
+    reply = build_enhanced_reply(student, progress, question)
 
     return jsonify({
         "reply": reply,
         "student": student,
-        "progress_count": len(progress)
+        "progress_count": len(progress),
+        "advisor_engine_available": ADVISOR_ENGINE_AVAILABLE
     })
 
 
