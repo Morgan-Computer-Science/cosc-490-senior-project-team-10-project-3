@@ -1,23 +1,34 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import sqlite3
+import os
+import traceback
 
 # Try to use the richer advising engine if available.
-# This prevents the whole backend from crashing if advising_ai.py
-# depends on streamlit / plotly / google-generativeai that are not installed.
+# If advising_ai.py depends on packages that are not installed,
+# the backend will still work in database mode.
 try:
     from advising_ai import AcademicAdvisor
     advisor_engine = AcademicAdvisor()
     ADVISOR_ENGINE_AVAILABLE = True
+    ADVISOR_ENGINE_ERROR = None
 except Exception as e:
     advisor_engine = None
     ADVISOR_ENGINE_AVAILABLE = False
     ADVISOR_ENGINE_ERROR = str(e)
 
 app = Flask(__name__)
-CORS(app)
 
-DB_PATH = "student_advisor.db"
+# Allow frontend requests to the API
+CORS(
+    app,
+    resources={r"/api/*": {"origins": "*"}},
+    methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"]
+)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "student_advisor.db")
 
 
 def get_connection():
@@ -155,10 +166,6 @@ def build_database_reply(student: dict, progress: list, question: str):
 
 
 def build_enhanced_reply(student: dict, progress: list, question: str):
-    """
-    Uses the DB-driven reply first, then adds optional AcademicAdvisor insights
-    when the advising_ai.py engine is available.
-    """
     base_reply = build_database_reply(student, progress, question)
 
     if not ADVISOR_ENGINE_AVAILABLE or advisor_engine is None:
@@ -189,7 +196,6 @@ def build_enhanced_reply(student: dict, progress: list, question: str):
             extra_parts.append(" Weekly availability snapshot:\n" + availability_text)
 
     except Exception:
-        # If the advanced engine fails for any reason, still return the DB reply.
         return base_reply
 
     if extra_parts:
@@ -210,6 +216,7 @@ def home():
 
     if not ADVISOR_ENGINE_AVAILABLE:
         response["advisor_engine_note"] = "AcademicAdvisor could not be loaded. Database mode is still active."
+        response["advisor_engine_error"] = ADVISOR_ENGINE_ERROR
 
     return jsonify(response)
 
@@ -219,10 +226,14 @@ def health():
     data = {
         "status": "ok",
         "message": "Backend is running",
-        "advisor_engine_available": ADVISOR_ENGINE_AVAILABLE
+        "advisor_engine_available": ADVISOR_ENGINE_AVAILABLE,
+        "db_path": DB_PATH
     }
+
     if not ADVISOR_ENGINE_AVAILABLE:
         data["advisor_engine_note"] = "AcademicAdvisor not loaded"
+        data["advisor_engine_error"] = ADVISOR_ENGINE_ERROR
+
     return jsonify(data)
 
 
@@ -261,30 +272,45 @@ def electives(group_code):
     return jsonify(get_elective_choices(group_code.upper()))
 
 
-@app.route("/api/adviser", methods=["POST"])
+@app.route("/api/adviser", methods=["POST", "OPTIONS"])
 def adviser():
-    data = request.get_json(silent=True) or {}
+    if request.method == "OPTIONS":
+        return jsonify({"ok": True}), 200
 
-    # Frontend can send either "question" or "message"
-    question = str(data.get("question") or data.get("message") or "").strip()
-    student_id = int(data.get("student_id", 1))
+    try:
+        data = request.get_json(silent=True) or {}
 
-    if not question:
-        return jsonify({"reply": "Please enter a question for the adviser."}), 400
+        question = str(data.get("question") or data.get("message") or "").strip()
 
-    student = get_student(student_id)
-    if not student:
-        return jsonify({"reply": "Student not found."}), 404
+        raw_student_id = data.get("student_id", 1)
+        try:
+            student_id = int(raw_student_id)
+        except (TypeError, ValueError):
+            student_id = 1
 
-    progress = get_student_progress(student_id)
-    reply = build_enhanced_reply(student, progress, question)
+        if not question:
+            return jsonify({"reply": "Please enter a question for the adviser."}), 400
 
-    return jsonify({
-        "reply": reply,
-        "student": student,
-        "progress_count": len(progress),
-        "advisor_engine_available": ADVISOR_ENGINE_AVAILABLE
-    })
+        student = get_student(student_id)
+        if not student:
+            return jsonify({"reply": f"Student {student_id} not found."}), 404
+
+        progress = get_student_progress(student_id)
+        reply = build_enhanced_reply(student, progress, question)
+
+        return jsonify({
+            "reply": reply,
+            "student": student,
+            "progress_count": len(progress),
+            "advisor_engine_available": ADVISOR_ENGINE_AVAILABLE
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            "reply": "The adviser hit a server error.",
+            "error": str(e)
+        }), 500
 
 
 if __name__ == "__main__":
