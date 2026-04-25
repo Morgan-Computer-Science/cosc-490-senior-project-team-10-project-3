@@ -74,48 +74,19 @@ def adviser():
     data = request.get_json() or {}
 
     question = data.get("question", "")
-    student_id = data.get("student_id", 1)
 
     if not question:
         return jsonify({"reply": "Please ask a question first."}), 400
 
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
+    reply = (
+        f"I can help you with academic advising, course planning, prerequisites, "
+        f"registration guidance, graduation progress, and semester scheduling.\n\n"
+        f"Based on your question: '{question}', I recommend checking your completed "
+        f"CS courses, math requirements, general education classes, and prerequisites "
+        f"before choosing your next semester schedule."
+    )
 
-        cur.execute("SELECT * FROM students WHERE id = ?", (student_id,))
-        student = cur.fetchone()
-        conn.close()
-
-        if student:
-            student = dict(student)
-            name = student.get("name", "student")
-            year = student.get("year", "student")
-            major = student.get("major", "Computer Science")
-            completed = student.get("completed_courses", "No completed courses listed")
-
-            reply = (
-                f"Hi {name}. Based on your profile as a {year} {major} student, "
-                f"and your completed courses: {completed}, here is my advice: "
-                f"For your question, '{question}', you should focus on the next required "
-                f"Computer Science, math, and general education courses in your curriculum. "
-                f"Make sure prerequisites are completed before registering."
-            )
-        else:
-            reply = (
-                f"I could not find student ID {student_id}, but based on your question "
-                f"'{question}', I recommend checking your CS curriculum, prerequisites, "
-                f"and degree audit before choosing classes."
-            )
-
-        return jsonify({"reply": reply})
-
-    except Exception as e:
-        return jsonify({
-            "reply": "The adviser backend had an error.",
-            "error": str(e)
-        }), 500
+    return jsonify({"reply": reply})
 
 
 if __name__ == "__main__":
