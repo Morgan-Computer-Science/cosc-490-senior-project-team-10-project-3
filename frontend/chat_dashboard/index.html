@@ -188,14 +188,14 @@
           </p>
 
           <div class="flex gap-2 mt-4 flex-wrap">
-            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="What classes should I take next semester?">
-              Show classes
+            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="Show me available sections for Operating Systems">
+              Show sections
             </button>
-            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="Show my progress">
-              Show progress
+            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="What GPA do I need for upper-level CS courses?">
+              GPA requirement
             </button>
-            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="What Group A electives do I have?">
-              Group A electives
+            <button class="quick-prompt text-xs font-bold px-3 py-2 bg-surface-container-highest rounded-lg text-primary hover:bg-slate-300 transition-colors" data-prompt="Help me plan my next semester as a CS major">
+              Plan semester
             </button>
           </div>
 
@@ -242,75 +242,12 @@
     </footer>
   </main>
 
-  <div id="settingsModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center">
-    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold text-primary">Settings</h3>
-        <button id="closeSettingsBtn" class="text-slate-500 text-xl">&times;</button>
-      </div>
-
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-semibold mb-2">Theme</label>
-          <select id="themeSelect" class="w-full border rounded-lg px-3 py-2">
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-sm font-semibold mb-2">Font Size</label>
-          <select id="fontSizeSelect" class="w-full border rounded-lg px-3 py-2">
-            <option value="14px">Small</option>
-            <option value="16px">Medium</option>
-            <option value="18px">Large</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="historyModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center">
-    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold text-primary">Chat History</h3>
-        <button id="closeHistoryBtn" class="text-slate-500 text-xl">&times;</button>
-      </div>
-      <div id="historyList" class="space-y-3 text-sm"></div>
-    </div>
-  </div>
-
-  <div id="accountModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center">
-    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold text-primary">Student Profile</h3>
-        <button id="closeAccountBtn" class="text-slate-500 text-xl">&times;</button>
-      </div>
-
-      <div class="space-y-4">
-        <div class="flex items-center gap-4">
-          <img id="accountProfileImg" class="w-16 h-16 rounded-xl object-cover bg-slate-200" src="" alt="Profile" />
-          <button id="changeProfilePicBtn" class="px-4 py-2 bg-slate-200 rounded-lg text-sm font-semibold">
-            Change Picture
-          </button>
-        </div>
-
-        <div class="space-y-2 text-sm">
-          <p><span class="font-bold">Name:</span> <span id="accountName"></span></p>
-          <p><span class="font-bold">Email:</span> <span id="accountEmail"></span></p>
-          <p><span class="font-bold">Major:</span> <span id="accountMajor"></span></p>
-          <p><span class="font-bold">Minor:</span> <span id="accountMinor"></span></p>
-          <p><span class="font-bold">Classification:</span> <span id="accountClassification"></span></p>
-          <p><span class="font-bold">Advisor:</span> <span id="accountAdvisor"></span></p>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <script>
-    const API_BASE_URL = "https://stunning-space-xylophone-v656p9g6wj75c66gp-5000.app.github.dev";
-    const API_URL = `${API_BASE_URL}/api/adviser`;
-    const HEALTH_URL = `${API_BASE_URL}/api/health`;
+    const API_URL = "/api/adviser";
+
+    if (localStorage.getItem("msu_logged_in") !== "true") {
+      window.location.href = "/login";
+    }
 
     const chatMessages = document.getElementById("chatMessages");
     const promptInput = document.getElementById("promptInput");
@@ -329,83 +266,9 @@
     const fileInput = document.getElementById("fileInput");
     const imageInput = document.getElementById("imageInput");
     const profileImageInput = document.getElementById("profileImageInput");
-
     const quickButtons = document.querySelectorAll(".quick-prompt");
 
-    const settingsModal = document.getElementById("settingsModal");
-    const historyModal = document.getElementById("historyModal");
-    const accountModal = document.getElementById("accountModal");
-
-    const closeSettingsBtn = document.getElementById("closeSettingsBtn");
-    const closeHistoryBtn = document.getElementById("closeHistoryBtn");
-    const closeAccountBtn = document.getElementById("closeAccountBtn");
-
-    const themeSelect = document.getElementById("themeSelect");
-    const fontSizeSelect = document.getElementById("fontSizeSelect");
-    const historyList = document.getElementById("historyList");
-
-    const sidebarProfileImg = document.getElementById("sidebarProfileImg");
-    const sidebarUserName = document.getElementById("sidebarUserName");
-    const sidebarUserEmail = document.getElementById("sidebarUserEmail");
-
-    const accountProfileImg = document.getElementById("accountProfileImg");
-    const accountName = document.getElementById("accountName");
-    const accountEmail = document.getElementById("accountEmail");
-    const accountMajor = document.getElementById("accountMajor");
-    const accountMinor = document.getElementById("accountMinor");
-    const accountClassification = document.getElementById("accountClassification");
-    const accountAdvisor = document.getElementById("accountAdvisor");
-    const changeProfilePicBtn = document.getElementById("changeProfilePicBtn");
-    const profileCard = document.getElementById("profileCard");
-
-    const defaultAvatar = "data:image/svg+xml;utf8," + encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
-        <rect width="100%" height="100%" fill="#e2e8f0"/>
-        <text x="50%" y="54%" text-anchor="middle" font-size="34" fill="#475569" font-family="Arial">👤</text>
-      </svg>
-    `);
-
     let chatHistory = JSON.parse(localStorage.getItem("msu_chat_history") || "[]");
-    let settings = JSON.parse(localStorage.getItem("msu_settings") || '{"theme":"light","fontSize":"16px"}');
-
-    function getProfile() {
-      return {
-        name: localStorage.getItem("msu_user_name") || "Student Name",
-        email: localStorage.getItem("msu_user_email") || "student@morgan.edu",
-        major: localStorage.getItem("msu_user_major") || "Computer Science",
-        minor: localStorage.getItem("msu_user_minor") || "N/A",
-        classification: localStorage.getItem("msu_user_classification") || "Student",
-        advisor: localStorage.getItem("msu_user_advisor") || "Not set",
-        picture: localStorage.getItem("msu_user_profile_pic") || defaultAvatar
-      };
-    }
-
-    function saveSettings() {
-      localStorage.setItem("msu_settings", JSON.stringify(settings));
-    }
-
-    function applySettings() {
-      document.documentElement.classList.remove("light", "dark");
-      document.documentElement.classList.add(settings.theme);
-      document.body.style.fontSize = settings.fontSize;
-      themeSelect.value = settings.theme;
-      fontSizeSelect.value = settings.fontSize;
-    }
-
-    function renderProfile() {
-      const profile = getProfile();
-      sidebarUserName.textContent = profile.name;
-      sidebarUserEmail.textContent = profile.email;
-      sidebarProfileImg.src = profile.picture;
-
-      accountName.textContent = profile.name;
-      accountEmail.textContent = profile.email;
-      accountMajor.textContent = profile.major;
-      accountMinor.textContent = profile.minor || "N/A";
-      accountClassification.textContent = profile.classification;
-      accountAdvisor.textContent = profile.advisor || "Not set";
-      accountProfileImg.src = profile.picture;
-    }
 
     function getTime() {
       return new Date().toLocaleTimeString([], {
@@ -489,66 +352,6 @@
       if (typingBubble) typingBubble.remove();
     }
 
-    function renderSavedChat() {
-      if (chatHistory.length === 0) return;
-
-      chatMessages.innerHTML = `
-        <div class="flex justify-center">
-          <span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold bg-slate-100 px-3 py-1 rounded-full">
-            Restored Chat
-          </span>
-        </div>
-      `;
-
-      chatHistory.forEach((msg) => {
-        if (msg.role === "user") {
-          addUserMessage(msg.text, true);
-        } else {
-          addBotMessage(msg.text, msg.title || "MSU CS Scholar", true);
-        }
-      });
-    }
-
-    function renderHistoryModal() {
-      historyList.innerHTML = "";
-
-      if (chatHistory.length === 0) {
-        historyList.innerHTML = `<p class="text-slate-500">No saved chat history yet.</p>`;
-        return;
-      }
-
-      chatHistory.forEach((msg) => {
-        const item = document.createElement("div");
-        item.className = "border rounded-xl p-3";
-        item.innerHTML = `
-          <p class="text-xs uppercase tracking-wider text-slate-400 font-bold mb-1">${msg.role}</p>
-          <p class="text-sm text-slate-700 whitespace-pre-wrap">${msg.text}</p>
-          <p class="text-[11px] text-slate-400 mt-2">${msg.time || ""}</p>
-        `;
-        historyList.appendChild(item);
-      });
-    }
-
-    async function checkBackendStatus() {
-      try {
-        const response = await fetch(HEALTH_URL);
-        const data = await response.json();
-
-        if (response.ok) {
-          console.log("Backend OK:", data);
-        } else {
-          console.warn("Backend responded with an error:", data);
-        }
-      } catch (error) {
-        console.error("Backend health check failed:", error);
-        addBotMessage(
-          "Backend connection check failed. Make sure your Flask app is running on port 5000.",
-          "Connection Warning",
-          true
-        );
-      }
-    }
-
     async function sendMessage(customText = null) {
       const message = (customText || promptInput.value).trim();
       if (!message) return;
@@ -568,65 +371,22 @@
           })
         });
 
-        let data = {};
-        try {
-          data = await response.json();
-        } catch {
-          data = {};
-        }
-
+        const data = await response.json();
         removeTypingMessage();
 
         if (!response.ok) {
-          addBotMessage(data.reply || data.error || `Server error (${response.status})`);
+          addBotMessage(data.reply || "Something went wrong.");
           return;
         }
 
         addBotMessage(data.reply || "No response returned.");
       } catch (error) {
         removeTypingMessage();
-        console.error(error);
-        addBotMessage("Frontend fetch failed: " + error.message);
+        addBotMessage("Could not connect to the backend. Make sure Flask is running on port 5000.");
       } finally {
         sendBtn.disabled = false;
         promptInput.focus();
       }
-    }
-
-    function openModal(modal) {
-      modal.classList.remove("hidden");
-      modal.classList.add("flex");
-    }
-
-    function closeModal(modal) {
-      modal.classList.add("hidden");
-      modal.classList.remove("flex");
-    }
-
-    function startVoiceInput() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-      if (!SpeechRecognition) {
-        alert("Voice input is not supported in this browser.");
-        return;
-      }
-
-      const recognition = new SpeechRecognition();
-      recognition.lang = "en-US";
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      recognition.start();
-
-      recognition.onresult = function(event) {
-        const transcript = event.results[0][0].transcript;
-        promptInput.value = transcript;
-        promptInput.focus();
-      };
-
-      recognition.onerror = function() {
-        alert("Voice input failed. Please try again.");
-      };
     }
 
     sendBtn.addEventListener("click", () => sendMessage());
@@ -656,45 +416,17 @@
       `;
     });
 
-    currentChatBtn.addEventListener("click", () => {
-      chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: "smooth" });
-      promptInput.focus();
-    });
-
-    historyBtn.addEventListener("click", () => {
-      renderHistoryModal();
-      openModal(historyModal);
-    });
-
-    settingsBtn.addEventListener("click", () => {
-      openModal(settingsModal);
-    });
-
-    closeSettingsBtn.addEventListener("click", () => closeModal(settingsModal));
-    closeHistoryBtn.addEventListener("click", () => closeModal(historyModal));
-    closeAccountBtn.addEventListener("click", () => closeModal(accountModal));
-
-    helpBtn.addEventListener("click", () => {
-      addBotMessage("You can ask about classes, semester planning, electives, GPA, progress, and advising support.", "Help");
-    });
-
     logoutBtn.addEventListener("click", () => {
-      alert("Logged out.");
+      localStorage.removeItem("msu_logged_in");
+      window.location.href = "/login";
     });
 
     searchBtn.addEventListener("click", () => {
       promptInput.focus();
-      promptInput.scrollIntoView({ behavior: "smooth", block: "center" });
     });
 
-    accountBtn.addEventListener("click", () => {
-      renderProfile();
-      openModal(accountModal);
-    });
-
-    profileCard.addEventListener("click", () => {
-      renderProfile();
-      openModal(accountModal);
+    helpBtn.addEventListener("click", () => {
+      addBotMessage("You can ask about courses, prerequisites, semester planning, degree progress, registration, and advising support.", "Help");
     });
 
     attachBtn.addEventListener("click", () => {
@@ -703,10 +435,6 @@
 
     imageBtn.addEventListener("click", () => {
       imageInput.click();
-    });
-
-    micBtn.addEventListener("click", () => {
-      startVoiceInput();
     });
 
     fileInput.addEventListener("change", () => {
@@ -720,45 +448,6 @@
         addBotMessage(`Selected image: ${imageInput.files[0].name}`, "Image Attached");
       }
     });
-
-    changeProfilePicBtn.addEventListener("click", () => {
-      profileImageInput.click();
-    });
-
-    profileImageInput.addEventListener("change", () => {
-      const file = profileImageInput.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        localStorage.setItem("msu_user_profile_pic", e.target.result);
-        renderProfile();
-      };
-      reader.readAsDataURL(file);
-    });
-
-    themeSelect.addEventListener("change", () => {
-      settings.theme = themeSelect.value;
-      saveSettings();
-      applySettings();
-    });
-
-    fontSizeSelect.addEventListener("change", () => {
-      settings.fontSize = fontSizeSelect.value;
-      saveSettings();
-      applySettings();
-    });
-
-    [settingsModal, historyModal, accountModal].forEach((modal) => {
-      modal.addEventListener("click", (e) => {
-        if (e.target === modal) closeModal(modal);
-      });
-    });
-
-    applySettings();
-    renderProfile();
-    renderSavedChat();
-    checkBackendStatus();
   </script>
 </body>
 </html>
