@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-from agent import run_advisor_agents
 import os
 import sqlite3
 
@@ -42,51 +41,28 @@ def chat():
 def health():
     return jsonify({
         "status": "ok",
-        "message": "Backend is running",
-        "chat_page": "/chat",
-        "login_page": "/login",
-        "signup_page": "/signup"
+        "message": "Backend is running"
     })
-
-
-@app.route("/api/students")
-def get_students():
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-
-        cur.execute("SELECT * FROM students LIMIT 20")
-        rows = cur.fetchall()
-        conn.close()
-
-        students = [dict(row) for row in rows]
-        return jsonify(students)
-
-    except Exception as e:
-        return jsonify({
-            "error": "Could not read students table",
-            "details": str(e)
-        }), 500
 
 
 @app.route("/api/adviser", methods=["POST"])
 def adviser():
     data = request.get_json() or {}
+
     question = data.get("question", "").strip()
 
     if not question:
         return jsonify({"reply": "Please ask a question first."}), 400
 
-    try:
-        reply = run_advisor_agents(question)
-        return jsonify({"reply": reply})
+    reply = (
+        f"I can help you with academic advising, course planning, prerequisites, "
+        f"registration guidance, graduation progress, and semester scheduling.\n\n"
+        f"Based on your question: '{question}', I recommend checking your completed "
+        f"CS courses, math requirements, general education classes, and prerequisites "
+        f"before choosing your next semester schedule."
+    )
 
-    except Exception as e:
-        return jsonify({
-            "reply": "The advisor agent had an error.",
-            "error": str(e)
-        }), 500
+    return jsonify({"reply": reply})
 
 
 if __name__ == "__main__":
