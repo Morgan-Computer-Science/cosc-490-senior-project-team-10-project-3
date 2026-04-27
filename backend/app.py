@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
+from agent import run_advisor_agents
 import os
-import sqlite3
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(BASE_DIR)
@@ -41,7 +41,8 @@ def chat():
 def health():
     return jsonify({
         "status": "ok",
-        "message": "Backend is running"
+        "message": "Backend is running",
+        "adviser_endpoint": "/api/adviser"
     })
 
 
@@ -49,21 +50,39 @@ def health():
 def adviser():
     data = request.get_json() or {}
 
+    student_id = data.get("student_id", 1)
     question = data.get("question", "").strip()
 
     if not question:
-        return jsonify({"reply": "Please ask a question first."}), 400
+        return jsonify({
+            "reply": "Please ask a question first."
+        }), 400
 
-    reply = (
-        f"I can help you with academic advising, course planning, prerequisites, "
-        f"registration guidance, graduation progress, and semester scheduling.\n\n"
-        f"Based on your question: '{question}', I recommend checking your completed "
-        f"CS courses, math requirements, general education classes, and prerequisites "
-        f"before choosing your next semester schedule."
-    )
+    try:
+        reply = run_advisor_agents(student_id, question)
 
-    return jsonify({"reply": reply})
+        return jsonify({
+            "reply": reply
+        })
+
+    except Exception as e:
+        return jsonify({
+            "reply": "The advising system had an error.",
+            "error": str(e)
+        }), 500
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({
+        "error": "Route not found",
+        "message": "Check that you are using /chat, /login, /signup, /api/health, or /api/adviser."
+    }), 404
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=True
+    )
