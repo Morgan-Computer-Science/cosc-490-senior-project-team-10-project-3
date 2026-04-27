@@ -230,3 +230,19 @@ def run_advisor_agents(question):
             return answer
 
     return general_agent(question)
+
+    def run_advisor_agents(question):
+    agents = [
+        curriculum_agent,
+        elective_agent,
+        course_agent,
+        graduation_agent,
+        general_agent
+    ]
+
+    for agent in agents:
+        answer = agent(question)
+        if answer:
+            return answer
+
+    return general_agent(question)
