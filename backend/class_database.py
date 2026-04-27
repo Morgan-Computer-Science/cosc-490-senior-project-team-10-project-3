@@ -1,10 +1,14 @@
-import sqlite3 
+import sqlite3
 
 conn = sqlite3.connect("student_advisor.db")
 cursor = conn.cursor()
+
 cursor.executescript("""
 PRAGMA foreign_keys = ON;
 
+DROP TABLE IF EXISTS career_course_recommendations;
+DROP TABLE IF EXISTS career_paths;
+DROP TABLE IF EXISTS graduation_requirements;
 DROP TABLE IF EXISTS student_selected_courses;
 DROP TABLE IF EXISTS students;
 DROP TABLE IF EXISTS curriculum_courses;
@@ -53,7 +57,8 @@ CREATE TABLE students (
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     entry_term TEXT,
-    major TEXT DEFAULT 'Computer Science'
+    major TEXT DEFAULT 'Computer Science',
+    gpa REAL DEFAULT 0.0
 );
 
 CREATE TABLE student_selected_courses (
@@ -67,6 +72,28 @@ CREATE TABLE student_selected_courses (
     FOREIGN KEY (semester_id) REFERENCES semesters(semester_id),
     FOREIGN KEY (course_id) REFERENCES courses(course_id)
 );
+
+CREATE TABLE graduation_requirements (
+    requirement_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    requirement_name TEXT NOT NULL,
+    required_credits INTEGER,
+    required_gpa REAL,
+    description TEXT NOT NULL
+);
+
+CREATE TABLE career_paths (
+    career_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_title TEXT NOT NULL,
+    description TEXT NOT NULL
+);
+
+CREATE TABLE career_course_recommendations (
+    recommendation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    career_keyword TEXT NOT NULL,
+    career_title TEXT NOT NULL,
+    course_code TEXT NOT NULL,
+    reason TEXT NOT NULL
+);
 """)
 
 semesters = [
@@ -79,8 +106,9 @@ semesters = [
     (7, "Senior", "Seventh Semester", 7),
     (8, "Senior", "Eighth Semester", 8),
 ]
+
 cursor.executemany(
-     "INSERT INTO semesters (semester_id, year_label, term_label, semester_number) VALUES (?, ?, ?, ?)",
+    "INSERT INTO semesters (semester_id, year_label, term_label, semester_number) VALUES (?, ?, ?, ?)",
     semesters
 )
 
@@ -95,8 +123,9 @@ cursor.executemany(
     "INSERT INTO elective_groups (group_code, group_name, min_required) VALUES (?, ?, ?)",
     elective_groups
 )
+
 courses = [
-        ("COSC 111", "Introduction to Computer Science I", 4, "Major", None),
+    ("COSC 111", "Introduction to Computer Science I", 4, "Major", None),
     ("COSC 112", "Introduction to Computer Science II", 4, "Major", None),
     ("COSC 220", "Data Structures and Algorithms", 4, "Major", None),
     ("COSC 241", "Computer Systems and Digital Logic", 3, "Major", None),
@@ -155,9 +184,15 @@ cursor.executemany(
     courses
 )
 
-def cid(code: str) -> int:
-    row = cursor.execute("SELECT course_id FROM courses WHERE course_code = ?", (code,)).fetchone()
+
+def cid(code):
+    row = cursor.execute(
+        "SELECT course_id FROM courses WHERE course_code = ?",
+        (code,)
+    ).fetchone()
     return row[0]
+
+
 curriculum_rows = [
     (1, cid("COSC 111"), None, "Required", 0, None),
     (1, cid("ENGL 101"), None, "Required", 0, None),
@@ -207,13 +242,146 @@ curriculum_rows = [
     (8, None, "Choose a Group D elective", "Elective Choice", 1, "D"),
     (8, None, "SB General Education Requirement", "General Education", 0, None),
 ]
-cursor.executemany(
-    """INSERT INTO curriculum_courses
-       (semester_id, course_id, placeholder_label, requirement_type, is_choice, choice_group)
-       VALUES (?, ?, ?, ?, ?, ?)""",
-    curriculum_rows
-)
+
+cursor.executemany("""
+INSERT INTO curriculum_courses
+(semester_id, course_id, placeholder_label, requirement_type, is_choice, choice_group)
+VALUES (?, ?, ?, ?, ?, ?)
+""", curriculum_rows)
+
+graduation_requirements = [
+    (
+        "Total Credits",
+        120,
+        2.0,
+        "A minimum of 120 credit hours and a 2.0 or higher GPA are required to graduate with a B.S. in Computer Science."
+    ),
+    (
+        "General Education and University Requirements",
+        44,
+        None,
+        "Students must complete 44 credits of general education and university requirements."
+    ),
+    (
+        "Supporting Courses",
+        11,
+        None,
+        "Students must complete 11 credits of supporting courses."
+    ),
+    (
+        "Required Courses for the Computer Science Major",
+        65,
+        None,
+        "Students must complete 65 credits of required Computer Science major courses."
+    ),
+    (
+        "Math Requirements",
+        14,
+        None,
+        "Required math courses are MATH 241 Calculus I, MATH 242 Calculus II, MATH 312 Linear Algebra I, and MATH 331 Applied Probability and Statistics."
+    ),
+]
+
+cursor.executemany("""
+INSERT INTO graduation_requirements
+(requirement_name, required_credits, required_gpa, description)
+VALUES (?, ?, ?, ?)
+""", graduation_requirements)
+
+career_paths = [
+    ("Software Developer/Engineer", "Creates, tests, and maintains software applications and systems."),
+    ("Cybersecurity Analyst", "Protects computer networks and systems from cyber threats."),
+    ("Data Scientist/Analyst", "Uses machine learning and statistics to interpret data for business decisions."),
+    ("Systems Analyst", "Evaluates and improves an organization's IT systems."),
+    ("Web Developer/Full-Stack Developer", "Designs and builds websites and web applications."),
+    ("Database Administrator", "Manages and secures data storage systems."),
+    ("AI/Machine Learning Engineer", "Develops artificial intelligence systems."),
+    ("IT Project Manager", "Leads technical projects and coordinates teams."),
+    ("UX/UI Designer", "Focuses on user experience and interface design for applications."),
+    ("DevOps Engineer", "Bridges the gap between software development and IT operations."),
+    ("Forensic Computer Analyst", "Investigates digital evidence and computer-related crimes."),
+    ("Network Architect", "Designs and builds computer networks for organizations."),
+    ("Quality Assurance Analyst", "Tests software to find bugs and improve product quality."),
+    ("Technical Writer", "Creates documentation, manuals, and guides for technical products."),
+    ("IT Auditor", "Reviews technology systems for security, compliance, and risk."),
+]
+
+cursor.executemany("""
+INSERT INTO career_paths (job_title, description)
+VALUES (?, ?)
+""", career_paths)
+
+career_course_recommendations = [
+    ("software", "Software Developer/Engineer", "COSC 112", "Builds programming fundamentals."),
+    ("software", "Software Developer/Engineer", "COSC 220", "Builds data structures and algorithm skills."),
+    ("software", "Software Developer/Engineer", "COSC 352", "Helps with programming languages and software design."),
+    ("software", "Software Developer/Engineer", "COSC 458", "Directly supports software engineering skills."),
+    ("software", "Software Developer/Engineer", "COSC 459", "Builds database design skills used in applications."),
+
+    ("cybersecurity", "Cybersecurity Analyst", "COSC 351", "Directly supports cybersecurity fundamentals."),
+    ("cybersecurity", "Cybersecurity Analyst", "COSC 349", "Builds computer networking knowledge."),
+    ("cybersecurity", "Cybersecurity Analyst", "COSC 323", "Supports cryptography and security concepts."),
+    ("cybersecurity", "Cybersecurity Analyst", "INSS 391", "Supports IT infrastructure and security."),
+    ("cybersecurity", "Cybersecurity Analyst", "EEGR 481", "Supports network security."),
+
+    ("data", "Data Scientist/Analyst", "COSC 251", "Introduces data science skills."),
+    ("data", "Data Scientist/Analyst", "COSC 472", "Directly supports machine learning."),
+    ("data", "Data Scientist/Analyst", "MATH 331", "Builds probability and statistics foundation."),
+    ("data", "Data Scientist/Analyst", "MATH 312", "Builds linear algebra foundation."),
+    ("data", "Data Scientist/Analyst", "CLCO 471", "Supports cloud data analytics."),
+
+    ("ai", "AI/Machine Learning Engineer", "COSC 470", "Directly supports artificial intelligence."),
+    ("ai", "AI/Machine Learning Engineer", "COSC 472", "Directly supports machine learning."),
+    ("ai", "AI/Machine Learning Engineer", "MATH 312", "Supports linear algebra for AI models."),
+    ("ai", "AI/Machine Learning Engineer", "MATH 331", "Supports probability and statistics for AI."),
+    ("ai", "AI/Machine Learning Engineer", "COSC 220", "Builds algorithms and data structures."),
+
+    ("web", "Web Developer/Full-Stack Developer", "COSC 112", "Builds programming fundamentals."),
+    ("web", "Web Developer/Full-Stack Developer", "COSC 220", "Builds backend logic skills."),
+    ("web", "Web Developer/Full-Stack Developer", "COSC 458", "Supports software project development."),
+    ("web", "Web Developer/Full-Stack Developer", "COSC 459", "Supports database-backed web apps."),
+    ("web", "Web Developer/Full-Stack Developer", "COSC 238", "Supports object-oriented programming."),
+
+    ("devops", "DevOps Engineer", "COSC 349", "Builds networking knowledge."),
+    ("devops", "DevOps Engineer", "COSC 354", "Builds operating systems knowledge."),
+    ("devops", "DevOps Engineer", "CLCO 261", "Introduces cloud computing."),
+    ("devops", "DevOps Engineer", "CLCO 471", "Supports cloud data analytics."),
+    ("devops", "DevOps Engineer", "COSC 458", "Supports software development workflows."),
+
+    ("database", "Database Administrator", "COSC 459", "Directly supports database design."),
+    ("database", "Database Administrator", "COSC 220", "Builds data structure fundamentals."),
+    ("database", "Database Administrator", "COSC 458", "Supports software systems development."),
+
+    ("qa", "Quality Assurance Analyst", "COSC 458", "Supports software testing and software engineering."),
+    ("qa", "Quality Assurance Analyst", "COSC 112", "Builds programming fundamentals."),
+    ("qa", "Quality Assurance Analyst", "COSC 220", "Builds logic and algorithm skills."),
+
+    ("network", "Network Architect", "COSC 349", "Directly supports computer networking."),
+    ("network", "Network Architect", "COSC 351", "Supports network security concepts."),
+    ("network", "Network Architect", "EEGR 481", "Supports network security."),
+
+    ("forensic", "Forensic Computer Analyst", "COSC 351", "Supports cybersecurity investigation skills."),
+    ("forensic", "Forensic Computer Analyst", "COSC 323", "Supports cryptography knowledge."),
+    ("forensic", "Forensic Computer Analyst", "INSS 391", "Supports IT infrastructure security."),
+]
+
+cursor.executemany("""
+INSERT INTO career_course_recommendations
+(career_keyword, career_title, course_code, reason)
+VALUES (?, ?, ?, ?)
+""", career_course_recommendations)
+
+students = [
+    ("Theo", "Hagan", "Fall 2026", "Computer Science", 3.2),
+    ("John", "Doe", "Fall 2026", "Computer Science", 2.8),
+]
+
+cursor.executemany("""
+INSERT INTO students (first_name, last_name, entry_term, major, gpa)
+VALUES (?, ?, ?, ?, ?)
+""", students)
 
 conn.commit()
 conn.close()
+
 print("student_advisor.db created successfully")
