@@ -345,7 +345,6 @@
       `;
       chatMessages.appendChild(wrapper);
       scrollToBottom();
-      speakText(text);
     }
 
     function removeTypingMessage() {
@@ -513,30 +512,39 @@ document.getElementById("sidebarUserName").textContent =
         addBotMessage(`Selected image: ${imageInput.files[0].name}`, "Image Attached");
       }
     });
-  let speechEnabled = true;
+  const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    micBtn.addEventListener("click", () => {
-      speechEnabled = !speechEnabled;
+if (SpeechRecognition) {
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.continuous = false;
+  recognition.interimResults = false;
 
-  if (speechEnabled) {
-    addBotMessage("Text to speech enabled.", "Voice");
+  micBtn.addEventListener("click", () => {
+    recognition.start();
     micBtn.style.color = "green";
-    } else {
-    speechSynthesis.cancel();
-    addBotMessage("Text to speech disabled.", "Voice");
-    micBtn.style.color = "gray";
-  }
+    addBotMessage("Listening... speak now.", "Voice");
   });
 
-  function speakText(text) {
-  if (!speechEnabled) return;
+  recognition.onresult = function (event) {
+    const transcript = event.results[0][0].transcript;
+    promptInput.value = transcript;
+    micBtn.style.color = "";
+  };
 
-  const speech = new SpeechSynthesisUtterance(text);
-  speech.rate = 1;
-  speech.pitch = 1;
-  speech.volume = 1;
+  recognition.onerror = function () {
+    micBtn.style.color = "";
+    addBotMessage("Microphone error. Make sure your browser has microphone permission.", "Voice");
+  };
 
-  speechSynthesis.speak(speech);
+  recognition.onend = function () {
+    micBtn.style.color = "";
+  };
+} else {
+  micBtn.addEventListener("click", () => {
+    addBotMessage("Speech recognition is not supported in this browser. Try Chrome.", "Voice");
+  });
 }
   </script>
 </body>
