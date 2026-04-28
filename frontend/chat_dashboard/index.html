@@ -345,6 +345,7 @@
       `;
       chatMessages.appendChild(wrapper);
       scrollToBottom();
+      speakText(text);
     }
 
     function removeTypingMessage() {
@@ -422,8 +423,72 @@
     });
 
     searchBtn.addEventListener("click", () => {
-      promptInput.focus();
+  const term = prompt("Search previous chats:");
+
+  if (!term) return;
+
+  const results = chatHistory.filter(msg =>
+    msg.text.toLowerCase().includes(term.toLowerCase())
+  );
+
+  if (results.length === 0) {
+    addBotMessage(`No chat history found for "${term}".`, "Search");
+    return;
+  }
+
+  let reply = `Search results for "${term}":\n\n`;
+
+  results.slice(-5).forEach(msg => {
+    reply += `- ${msg.text}\n`;
+  });
+
+  addBotMessage(reply, "Search");
+});
+
+
+accountBtn.addEventListener("click", () => {
+  const name = localStorage.getItem("msu_name") || "Student Name";
+  const email = localStorage.getItem("msu_email") || "student@morgan.edu";
+  const major = localStorage.getItem("msu_major") || "Computer Science";
+
+  addBotMessage(
+    `Student Profile:\n\nName: ${name}\nEmail: ${email}\nMajor: ${major}`,
+    "Profile"
+  );
+});
+
+
+settingsBtn.addEventListener("click", () => {
+  const newName = prompt("Enter your name:");
+  if (newName) localStorage.setItem("msu_name", newName);
+
+  const newEmail = prompt("Enter your email:");
+  if (newEmail) localStorage.setItem("msu_email", newEmail);
+
+  const newMajor = prompt("Enter your major:");
+  if (newMajor) localStorage.setItem("msu_major", newMajor);
+
+  document.getElementById("sidebarUserName").textContent =
+    localStorage.getItem("msu_name") || "Student Name";
+
+  document.getElementById("sidebarUserEmail").textContent =
+    localStorage.getItem("msu_email") || "student@morgan.edu";
+
+  addBotMessage("Profile updated successfully.", "Settings");
+});
+
+
+document.getElementById("sidebarUserName").textContent =
+  localStorage.getItem("msu_name") || "Student Name";
+
+    document.getElementById("sidebarUserEmail").textContent =
+      localStorage.getItem("msu_email") || "student@morgan.edu";
+
+
+    document.getElementById("profileCard").addEventListener("click", () => {
+      accountBtn.click();
     });
+
 
     helpBtn.addEventListener("click", () => {
       addBotMessage("You can ask about courses, prerequisites, semester planning, degree progress, registration, and advising support.", "Help");
@@ -448,6 +513,31 @@
         addBotMessage(`Selected image: ${imageInput.files[0].name}`, "Image Attached");
       }
     });
+  let speechEnabled = true;
+
+    micBtn.addEventListener("click", () => {
+      speechEnabled = !speechEnabled;
+
+  if (speechEnabled) {
+    addBotMessage("Text to speech enabled.", "Voice");
+    micBtn.style.color = "green";
+    } else {
+    speechSynthesis.cancel();
+    addBotMessage("Text to speech disabled.", "Voice");
+    micBtn.style.color = "gray";
+  }
+  });
+
+  function speakText(text) {
+  if (!speechEnabled) return;
+
+  const speech = new SpeechSynthesisUtterance(text);
+  speech.rate = 1;
+  speech.pitch = 1;
+  speech.volume = 1;
+
+  speechSynthesis.speak(speech);
+}
   </script>
 </body>
 </html>
