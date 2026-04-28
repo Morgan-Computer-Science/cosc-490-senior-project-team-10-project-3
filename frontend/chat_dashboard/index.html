@@ -267,7 +267,40 @@
     const imageInput = document.getElementById("imageInput");
     const profileImageInput = document.getElementById("profileImageInput");
     const quickButtons = document.querySelectorAll(".quick-prompt");
+    
+    function getCurrentUser() {
+      const email = localStorage.getItem("msu_current_user_email");
+      if (!email) return null;
 
+      const savedUser = localStorage.getItem(`msu_user_${email}`);
+      if (!savedUser) return null;
+
+    try {
+      return JSON.parse(savedUser);
+    } catch {
+      return null;
+    }
+  }
+
+    function loadUserProfile() {
+      const user = getCurrentUser();
+
+      if (!user) {
+        window.location.href = "/login";
+        return;
+      }
+
+  document.getElementById("sidebarUserName").textContent =
+    user.name || "Student Name";
+
+  document.getElementById("sidebarUserEmail").textContent =
+    user.email || "student@morgan.edu";
+
+  if (user.profilePic) {
+    document.getElementById("sidebarProfileImg").src =
+      user.profilePic;
+  }
+}
     let chatHistory = JSON.parse(localStorage.getItem("msu_chat_history") || "[]");
 
     function getTime() {
@@ -418,6 +451,7 @@
 
     logoutBtn.addEventListener("click", () => {
       localStorage.removeItem("msu_logged_in");
+      localStorage.removeItem("msu_current_user_email");
       window.location.href = "/login";
     });
 
@@ -446,12 +480,22 @@
 
 
 accountBtn.addEventListener("click", () => {
-  const name = localStorage.getItem("msu_name") || "Student Name";
-  const email = localStorage.getItem("msu_email") || "student@morgan.edu";
-  const major = localStorage.getItem("msu_major") || "Computer Science";
+  const user = getCurrentUser();
+
+  if (!user) {
+    addBotMessage("No user profile found. Please log in again.", "Profile");
+    return;
+  }
 
   addBotMessage(
-    `Student Profile:\n\nName: ${name}\nEmail: ${email}\nMajor: ${major}`,
+    `Student Profile:
+
+    Name: ${user.name}
+    Email: ${user.email}
+    Major: ${user.major}
+    Minor: ${user.minor || "None"}
+    Classification: ${user.classification || "Student"}
+    Advisor: ${user.advisor || "Not assigned"}`,
     "Profile"
   );
 });
@@ -467,11 +511,7 @@ settingsBtn.addEventListener("click", () => {
   const newMajor = prompt("Enter your major:");
   if (newMajor) localStorage.setItem("msu_major", newMajor);
 
-  document.getElementById("sidebarUserName").textContent =
-    localStorage.getItem("msu_name") || "Student Name";
-
-  document.getElementById("sidebarUserEmail").textContent =
-    localStorage.getItem("msu_email") || "student@morgan.edu";
+  loadUserProfile();
 
   addBotMessage("Profile updated successfully.", "Settings");
 });
