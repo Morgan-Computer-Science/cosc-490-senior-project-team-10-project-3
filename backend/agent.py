@@ -280,9 +280,59 @@ def career_course_agent(question):
 
     return reply
 
+def faculty_agent():
+    return (
+        'This is the link to all the Computer Science Department faculty '
+        'at Morgan State University:<br><br>'
+        '<a href="https://www.morgan.edu/computer-science/faculty-and-staff" '
+        'target="_blank" '
+        'style="color:blue; font-weight:bold; text-decoration:underline;">'
+        'View Morgan State Computer Science Faculty and Staff</a>'
+    )
+
+def general_requirements_agent():
+    return (
+        "General Education Requirements for Computer Science Majors:\n\n"
+        "XXXX - HH General Education Req. 3 credits HH\n"
+        "COSC 111 - Introduction to Computer Science I 4 credits IM*\n"
+        "XXXX - AH General Education Req. 3 credits AH\n"
+        "XXXX - AH General Education Req. 3 credits AH\n"
+        "XXXX - BP General Education Req. 4 credits with lab BP\n"
+        "XXXX - BP General Education Req. 3 credits no lab req. BP\n"
+        "XXXX - SB General Education Req. 3 credits SB\n"
+        "XXXX - SB General Education Req. 3 credits SB\n"
+        "XXXX - CI General Education Req. 3 credits CI\n"
+        "XXXX - CT General Education Req. 3 credits CT\n"
+        "ORNS 106 - Freshman Orientation for Majors in the School of Computer, Mathematical and Natural Sciences 1 credits\n"
+        "XXXX - Phys. Activity or FIN 101 or MIND 101 1 credit"
+    )
+def student_gateway_agent():
+    return (
+        'You can access your school personal information through Morgan State University Gateway for Current Students:<br><br>'
+        '<a href="https://www.morgan.edu/gateway-currentstudents" '
+        'target="_blank" '
+        'style="color:blue; font-weight:bold; text-decoration:underline;">'
+        'Open Morgan State Current Students Gateway</a><br><br>'
+        'On this page, you can access Canvas, which is used for your current classes. '
+        'You can also access WebSIS, where you can view tuition payments and costs, register for classes, '
+        'and plan meetings with your advisors. You can also use the academic calendar to see events, '
+        'important dates, and special days on campus or around the university.'
+    )
 
 def run_advisor_agents(student_id, question):
     q = question.lower()
+    if (
+        "faculty" in q
+        or "professor" in q
+        or "professors" in q
+        or "teacher" in q
+        or "teachers" in q
+        or "instructor" in q
+        or "instructors" in q
+        or "computer science department faculty" in q
+        or "who are the faculty" in q
+    ):
+        return faculty_agent()
 
     if (
         "what classes should i take for" in q
@@ -358,3 +408,23 @@ def run_advisor_agents(student_id, question):
         "- What classes should I take if I want to be a software engineer?\n"
         "- What classes should I take for cybersecurity?"
     )
+
+    if (
+        "general requirements" in q
+        or "general education" in q
+        or "gen ed" in q
+        or "general requirement classes" in q
+        or "general education classes" in q
+    ):
+        return general_requirements_agent()    
+        if (
+        "personal information" in q
+        or "school personal information" in q
+        or "student gateway" in q
+        or "current students gateway" in q
+        or "canvas" in q
+        or "websis" in q
+        or "tuition" in q
+        or "academic calendar" in q
+    ):
+            return student_gateway_agent()

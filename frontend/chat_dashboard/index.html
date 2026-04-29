@@ -351,7 +351,7 @@
         </div>
       `;
       wrapper.querySelector("h3").textContent = title;
-      wrapper.querySelector("p").textContent = text;
+      wrapper.querySelector("p").innerHTML = text;
       chatMessages.appendChild(wrapper);
       scrollToBottom();
 
