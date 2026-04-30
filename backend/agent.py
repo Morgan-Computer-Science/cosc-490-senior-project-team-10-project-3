@@ -322,6 +322,28 @@ def student_gateway_agent():
 def run_advisor_agents(student_id, question):
     q = question.lower()
     
+    if (
+        "where can i register" in q
+        or "where do i register" in q
+        or "how do i register" in q
+        or "register my classes" in q
+        or "register for classes" in q
+        or "class registration" in q
+        or "course registration" in q
+        or "registration" in q
+        or "student gateway" in q
+        or "current students gateway" in q
+        or "canvas" in q
+        or "websis" in q
+        or "student self-service" in q
+        or "self service" in q
+        or "tuition" in q
+        or "academic calendar" in q
+        or "personal information" in q
+        or "school personal information" in q
+    ):
+        return student_gateway_agent()
+
     if "resume" in q or "attached file" in q or "file content" in q:
         return (
             "I can review resumes and uploaded files. For a strong Computer Science resume, "
@@ -426,14 +448,5 @@ def run_advisor_agents(student_id, question):
         or "general education classes" in q
     ):
         return general_requirements_agent()    
-        if (
-        "personal information" in q
-        or "school personal information" in q
-        or "student gateway" in q
-        or "current students gateway" in q
-        or "canvas" in q
-        or "websis" in q
-        or "tuition" in q
-        or "academic calendar" in q
-    ):
-            return student_gateway_agent()
+    
+    
