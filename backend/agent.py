@@ -1,8 +1,18 @@
 import os
 import sqlite3
+from dotenv import load_dotenv
+from google import genai
+
+load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "student_advisor.db")
+
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    raise ValueError("GEMINI_API_KEY is missing in your .env file")
+
+client = genai.Client(api_key=api_key)
 
 
 def query_db(query, params=()):
@@ -15,9 +25,34 @@ def query_db(query, params=()):
     return [dict(row) for row in rows]
 
 
+def ask_gemini(question, context=""):
+    prompt = f"""
+You are a helpful Computer Science academic advisor for Morgan State University students.
+
+Use the provided database context if it is available.
+Do not make up course requirements.
+If the context does not fully answer the question, explain that clearly and give helpful guidance.
+
+Student Question:
+{question}
+
+Database Context:
+{context}
+
+Respond naturally, clearly, and supportively.
+"""
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+
+    return response.text
+
+
 def curriculum_agent():
     rows = query_db("""
-        SELECT 
+        SELECT
             s.year_label,
             s.term_label,
             c.course_code,
@@ -35,7 +70,7 @@ def curriculum_agent():
     if not rows:
         return "No curriculum data was found."
 
-    reply = "Computer Science Curriculum Plan:\n\n"
+    context = "Computer Science Curriculum Plan:\n\n"
     current_term = ""
 
     for row in rows:
@@ -43,17 +78,17 @@ def curriculum_agent():
 
         if term != current_term:
             current_term = term
-            reply += f"\n{term}\n"
+            context += f"\n{term}\n"
 
         if row["course_code"]:
-            reply += f"- {row['course_code']}: {row['course_title']} ({row['credits']} credits)\n"
+            context += f"- {row['course_code']}: {row['course_title']} ({row['credits']} credits)\n"
         else:
-            reply += f"- {row['placeholder_label']}"
+            context += f"- {row['placeholder_label']}"
             if row["choice_group"]:
-                reply += f" Group {row['choice_group']}"
-            reply += "\n"
+                context += f" Group {row['choice_group']}"
+            context += "\n"
 
-    return reply
+    return context
 
 
 def semester_agent(question):
@@ -76,12 +111,11 @@ def semester_agent(question):
         semester_number = 7
     elif "eighth semester" in q:
         semester_number = 8
-
-    if semester_number is None:
+    else:
         semester_number = 1
 
     rows = query_db("""
-        SELECT 
+        SELECT
             s.year_label,
             s.term_label,
             c.course_code,
@@ -100,15 +134,15 @@ def semester_agent(question):
     if not rows:
         return "I could not find courses for that semester."
 
-    reply = f"Recommended courses for {rows[0]['year_label']} {rows[0]['term_label']}:\n\n"
+    context = f"Recommended courses for {rows[0]['year_label']} {rows[0]['term_label']}:\n\n"
 
     for row in rows:
         if row["course_code"]:
-            reply += f"- {row['course_code']}: {row['course_title']} ({row['credits']} credits)\n"
+            context += f"- {row['course_code']}: {row['course_title']} ({row['credits']} credits)\n"
         else:
-            reply += f"- {row['placeholder_label']}\n"
+            context += f"- {row['placeholder_label']}\n"
 
-    return reply
+    return context
 
 
 def elective_agent(question):
@@ -142,15 +176,15 @@ def elective_agent(question):
     if not rows:
         return "I could not find elective courses."
 
-    reply = "Available electives:\n\n"
+    context = "Available electives:\n\n"
 
     for row in rows:
         if "elective_group" in row:
-            reply += f"- Group {row['elective_group']}: {row['course_code']} - {row['course_title']} ({row['credits']} credits)\n"
+            context += f"- Group {row['elective_group']}: {row['course_code']} - {row['course_title']} ({row['credits']} credits)\n"
         else:
-            reply += f"- {row['course_code']}: {row['course_title']} ({row['credits']} credits)\n"
+            context += f"- {row['course_code']}: {row['course_title']} ({row['credits']} credits)\n"
 
-    return reply
+    return context
 
 
 def graduation_requirements_agent():
@@ -163,20 +197,20 @@ def graduation_requirements_agent():
     if not rows:
         return "I could not find graduation requirements in the database."
 
-    reply = "B.S. in Computer Science Graduation Requirements:\n\n"
+    context = "B.S. in Computer Science Graduation Requirements:\n\n"
 
     for row in rows:
-        reply += f"- {row['requirement_name']}: "
+        context += f"- {row['requirement_name']}: "
 
         if row["required_credits"]:
-            reply += f"{row['required_credits']} credits. "
+            context += f"{row['required_credits']} credits. "
 
         if row["required_gpa"]:
-            reply += f"Minimum GPA: {row['required_gpa']}+. "
+            context += f"Minimum GPA: {row['required_gpa']}+. "
 
-        reply += f"{row['description']}\n"
+        context += f"{row['description']}\n"
 
-    return reply
+    return context
 
 
 def math_requirements_agent():
@@ -190,14 +224,14 @@ def math_requirements_agent():
     if not rows:
         return "I could not find the math requirements in the database."
 
-    reply = "Math Requirements for the B.S. in Computer Science:\n\n"
+    context = "Math Requirements for the B.S. in Computer Science:\n\n"
 
     for row in rows:
-        reply += f"- {row['course_code']}: {row['course_title']} ({row['credits']} credits)\n"
+        context += f"- {row['course_code']}: {row['course_title']} ({row['credits']} credits)\n"
 
-    reply += "\nThese math courses are part of the supporting course requirements."
+    context += "\nThese math courses are part of the supporting course requirements."
 
-    return reply
+    return context
 
 
 def career_paths_agent():
@@ -210,12 +244,12 @@ def career_paths_agent():
     if not rows:
         return "I could not find career path information in the database."
 
-    reply = "Jobs you can get with a B.S. in Computer Science:\n\n"
+    context = "Jobs you can get with a B.S. in Computer Science:\n\n"
 
     for row in rows:
-        reply += f"- {row['job_title']}: {row['description']}\n"
+        context += f"- {row['job_title']}: {row['description']}\n"
 
-    return reply
+    return context
 
 
 def career_course_agent(question):
@@ -244,15 +278,10 @@ def career_course_agent(question):
         keyword = "forensic"
 
     if keyword is None:
-        return (
-            "Tell me which career you are interested in, such as software engineer, "
-            "cybersecurity analyst, data scientist, AI/ML engineer, web developer, "
-            "DevOps engineer, database administrator, QA analyst, network architect, "
-            "or forensic computer analyst."
-        )
+        return ""
 
     rows = query_db("""
-        SELECT 
+        SELECT
             r.career_title,
             r.course_code,
             c.course_title,
@@ -269,101 +298,20 @@ def career_course_agent(question):
 
     career_title = rows[0]["career_title"]
 
-    reply = f"If you are interested in becoming a {career_title}, consider these classes:\n\n"
+    context = f"Course recommendations for becoming a {career_title}:\n\n"
 
     for row in rows:
         course_title = row["course_title"] or "Course not found in database"
         credits = row["credits"] or "N/A"
 
-        reply += f"- {row['course_code']}: {course_title} ({credits} credits)\n"
-        reply += f"  Reason: {row['reason']}\n"
+        context += f"- {row['course_code']}: {course_title} ({credits} credits)\n"
+        context += f"  Reason: {row['reason']}\n"
 
-    return reply
+    return context
 
-def faculty_agent():
-    return (
-        'This is the link to all the Computer Science Department faculty '
-        'at Morgan State University:<br><br>'
-        '<a href="https://www.morgan.edu/computer-science/faculty-and-staff" '
-        'target="_blank" '
-        'style="color:blue; font-weight:bold; text-decoration:underline;">'
-        'View Morgan State Computer Science Faculty and Staff</a>'
-    )
 
-def general_requirements_agent():
-    return (
-        "General Education Requirements for Computer Science Majors:\n\n"
-        "XXXX - HH General Education Req. 3 credits HH\n"
-        "COSC 111 - Introduction to Computer Science I 4 credits IM*\n"
-        "XXXX - AH General Education Req. 3 credits AH\n"
-        "XXXX - AH General Education Req. 3 credits AH\n"
-        "XXXX - BP General Education Req. 4 credits with lab BP\n"
-        "XXXX - BP General Education Req. 3 credits no lab req. BP\n"
-        "XXXX - SB General Education Req. 3 credits SB\n"
-        "XXXX - SB General Education Req. 3 credits SB\n"
-        "XXXX - CI General Education Req. 3 credits CI\n"
-        "XXXX - CT General Education Req. 3 credits CT\n"
-        "ORNS 106 - Freshman Orientation for Majors in the School of Computer, Mathematical and Natural Sciences 1 credits\n"
-        "XXXX - Phys. Activity or FIN 101 or MIND 101 1 credit"
-    )
-def student_gateway_agent():
-    return (
-        'You can access your school personal information through Morgan State University Gateway for Current Students:<br><br>'
-        '<a href="https://www.morgan.edu/gateway-currentstudents" '
-        'target="_blank" '
-        'style="color:blue; font-weight:bold; text-decoration:underline;">'
-        'Open Morgan State Current Students Gateway</a><br><br>'
-        'On this page, you can access Canvas, which is used for your current classes. '
-        'You can also access WebSIS, where you can view tuition payments and costs, register for classes, '
-        'and plan meetings with your advisors. You can also use the academic calendar to see events, '
-        'important dates, and special days on campus or around the university.'
-    )
-
-def run_advisor_agents(student_id, question):
+def get_agent_context(question):
     q = question.lower()
-    
-    if (
-        "where can i register" in q
-        or "where do i register" in q
-        or "how do i register" in q
-        or "register my classes" in q
-        or "register for classes" in q
-        or "class registration" in q
-        or "course registration" in q
-        or "registration" in q
-        or "student gateway" in q
-        or "current students gateway" in q
-        or "canvas" in q
-        or "websis" in q
-        or "student self-service" in q
-        or "self service" in q
-        or "tuition" in q
-        or "academic calendar" in q
-        or "personal information" in q
-        or "school personal information" in q
-    ):
-        return student_gateway_agent()
-
-    if "resume" in q or "attached file" in q or "file content" in q:
-        return (
-            "I can review resumes and uploaded files. For a strong Computer Science resume, "
-            "include programming languages, projects, GitHub links, internships, technical skills, "
-            "certifications, and relevant coursework. If the uploaded file text is available, "
-            "I can give more specific feedback."
-        )
-
-    if (
-        "faculty" in q
-        or "professor" in q
-        or "professors" in q
-        or "teacher" in q
-        or "teachers" in q
-        or "instructor" in q
-        or "instructors" in q
-        or "computer science department faculty" in q
-        or "who are the faculty" in q
-    ):
-        return faculty_agent()
 
     if (
         "what classes should i take for" in q
@@ -427,26 +375,10 @@ def run_advisor_agents(student_id, question):
     if "curriculum" in q or "required" in q or "classes do i need" in q or "course plan" in q:
         return curriculum_agent()
 
-    return (
-        "I can help with your Computer Science advising plan.\n\n"
-        "Try asking:\n"
-        "- What classes should I take first semester?\n"
-        "- What electives are in Group A?\n"
-        "- Show me the full curriculum.\n"
-        "- What are the graduation requirements?\n"
-        "- What math classes do I need?\n"
-        "- What jobs can I get with a computer science degree?\n"
-        "- What classes should I take if I want to be a software engineer?\n"
-        "- What classes should I take for cybersecurity?"
-    )
+    return ""
 
-    if (
-        "general requirements" in q
-        or "general education" in q
-        or "gen ed" in q
-        or "general requirement classes" in q
-        or "general education classes" in q
-    ):
-        return general_requirements_agent()    
-    
-    
+
+def run_advisor_agents(student_id, question):
+    context = get_agent_context(question)
+
+    return ask_gemini(question, context)
