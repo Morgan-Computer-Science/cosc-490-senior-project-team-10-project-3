@@ -321,6 +321,15 @@ def student_gateway_agent():
 
 def run_advisor_agents(student_id, question):
     q = question.lower()
+    
+    if "resume" in q or "attached file" in q or "file content" in q:
+        return (
+            "I can review resumes and uploaded files. For a strong Computer Science resume, "
+            "include programming languages, projects, GitHub links, internships, technical skills, "
+            "certifications, and relevant coursework. If the uploaded file text is available, "
+            "I can give more specific feedback."
+        )
+
     if (
         "faculty" in q
         or "professor" in q

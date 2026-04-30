@@ -17,6 +17,7 @@ app = Flask(__name__)
 CORS(app)
 
 
+
 @app.route("/")
 def home():
     return send_from_directory(LOGIN_DIR, "code.html")
@@ -53,12 +54,18 @@ def adviser():
     student_id = data.get("student_id", 1)
     question = data.get("question", "").strip()
 
+    file_name = data.get("file_name", "")
+    file_text = data.get("file_text", "")
+
     if not question:
         return jsonify({
             "reply": "Please ask a question first."
         }), 400
 
     try:
+        if file_text:
+            question = f"{question}\n\nAttached file name: {file_name}\n\nAttached file content:\n{file_text}"
+
         reply = run_advisor_agents(student_id, question)
 
         return jsonify({
@@ -70,7 +77,6 @@ def adviser():
             "reply": "The advising system had an error.",
             "error": str(e)
         }), 500
-
 
 @app.errorhandler(404)
 def not_found(error):

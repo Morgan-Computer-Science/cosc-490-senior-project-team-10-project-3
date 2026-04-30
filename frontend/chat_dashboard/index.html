@@ -267,6 +267,8 @@
     const imageInput = document.getElementById("imageInput");
     const profileImageInput = document.getElementById("profileImageInput");
     const quickButtons = document.querySelectorAll(".quick-prompt");
+    let attachedFileText = "";
+    let attachedFileName = "";
     
     function getCurrentUser() {
       const email = localStorage.getItem("msu_current_user_email");
@@ -400,7 +402,9 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             student_id: 1,
-            question: message
+            question: message,
+            file_name: attachedFileName,
+            file_text: attachedFileText
           })
         });
 
@@ -541,11 +545,19 @@ document.getElementById("sidebarUserName").textContent =
       imageInput.click();
     });
 
-    fileInput.addEventListener("change", () => {
+    fileInput.addEventListener("change", async () => {
       if (fileInput.files.length > 0) {
-        addBotMessage(`Selected file: ${fileInput.files[0].name}`, "File Attached");
+      const file = fileInput.files[0];
+      attachedFileName = file.name;
+
+      try {
+        attachedFileText = await file.text();
+        addBotMessage(`File attached: ${file.name}. Now ask me a question about it.`, "File Attached");
+      } catch (error) {
+        addBotMessage("I could not read this file. Try uploading a .txt, .csv, or simple text file.", "File Error");
       }
-    });
+    }
+  });
 
     imageInput.addEventListener("change", () => {
       if (imageInput.files.length > 0) {
