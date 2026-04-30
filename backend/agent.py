@@ -2,8 +2,20 @@ import os
 import sqlite3
 from dotenv import load_dotenv
 from google import genai
+import os
+
+import os
+from dotenv import load_dotenv
+from google import genai
 
 load_dotenv()
+
+api_key = os.getenv("GEMINI_API_KEY")
+
+if not api_key:
+    raise ValueError("Missing GEMINI_API_KEY. Check your .env file.")
+
+client = genai.Client(api_key=os.getenv("AIzaSyDDQ2Ft2dc28pKrknfMDsUETGNkZD3YYCc"))
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "student_advisor.db")
