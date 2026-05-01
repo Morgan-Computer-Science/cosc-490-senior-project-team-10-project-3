@@ -1,65 +1,134 @@
+# backend/agent.py
+
 import os
 import sqlite3
 from dotenv import load_dotenv
-from google import genai
-import os
-
-import os
-from dotenv import load_dotenv
-from google import genai
 
 load_dotenv()
-
-api_key = os.getenv("GEMINI_API_KEY")
-
-if not api_key:
-    raise ValueError("Missing GEMINI_API_KEY. Check your .env file.")
-
-client = genai.Client(api_key=os.getenv("AIzaSyDDQ2Ft2dc28pKrknfMDsUETGNkZD3YYCc"))
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "student_advisor.db")
 
-api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    raise ValueError("GEMINI_API_KEY is missing in your .env file")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-client = genai.Client(api_key=api_key)
+client = None
 
+try:
+    if GEMINI_API_KEY:
+        from google import genai
+        client = genai.Client(api_key=GEMINI_API_KEY)
+except Exception as e:
+    print("Gemini setup failed:", e)
+    client = None
+
+def small_talk_agent(question):
+    q = question.lower().strip()
+
+    if q in ["hi", "hello", "hey", "yo", "good morning", "good afternoon", "good evening"]:
+        return """
+Hi! I’m MSU CS Scholar, your Morgan State Computer Science advising assistant.
+
+I can help with:
+- Choosing classes
+- Understanding the CS curriculum
+- Electives
+- Graduation requirements
+- Math requirements
+- Career paths
+- Faculty information
+- Registration, WebSIS, Canvas, tuition, overrides, and appeals
+"""
+
+    if (
+        "what do you do" in q
+        or "what can you do" in q
+        or "who are you" in q
+        or "help me" in q
+    ):
+        return """
+I’m MSU CS Scholar. I help Morgan State Computer Science students with academic advising.
+
+You can ask me things like:
+- What classes should I take first semester?
+- What electives are in Group A?
+- Who are the Computer Science faculty?
+- How do I request an override?
+- How do I request an appeal?
+- What jobs can I get with a Computer Science degree?
+"""
+
+    return ""
+
+def faculty_agent():
+    return """
+Morgan State University Computer Science Faculty:
+
+- Dr. Hong Wang – Department Chair / Faculty
+- Dr. Nilanjan Banerjee – Computer Science Faculty
+- Dr. Shiv Sharma – Computer Science Faculty
+- Dr. Danda Rawat – Computer Science Faculty
+- Dr. Fisseha Mekuria – Computer Science Faculty
+- Dr. Youakim Badr – Computer Science Faculty
+
+For the latest office hours, advising, and research areas, visit the Morgan State University Computer Science Department website.
+"""
 
 def query_db(query, params=()):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+    except Exception as e:
+        print("Database error:", e)
+        return []
 
 
 def ask_gemini(question, context=""):
+    if not client:
+        if context:
+            return context
+        return (
+            "I can help with Computer Science advising, but Gemini is not connected yet. "
+            "Make sure GEMINI_API_KEY is saved correctly in your backend/.env file."
+        )
+
     prompt = f"""
-You are a helpful Computer Science academic advisor for Morgan State University students.
+You are MSU CS Scholar, a Computer Science academic advising assistant for Morgan State University students.
 
-Use the provided database context if it is available.
-Do not make up course requirements.
-If the context does not fully answer the question, explain that clearly and give helpful guidance.
+Your job:
+- Help students choose classes.
+- Explain curriculum requirements.
+- Recommend electives.
+- Help with career-based course planning.
+- Explain graduation requirements.
+- Tell students that override requests should be sent to Dr. Wang and the academic advisors.
+- Do not make up requirements.
+- Use the database context when available.
 
-Student Question:
+Student question:
 {question}
 
-Database Context:
+Database context:
 {context}
 
-Respond naturally, clearly, and supportively.
+Give a clear, friendly advising answer.
 """
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
-    )
-
-    return response.text
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        return response.text
+    except Exception as e:
+        print("Gemini error:", e)
+        if context:
+            return context
+        return "The AI model had an error, but the advising system is still running."
 
 
 def curriculum_agent():
@@ -80,7 +149,7 @@ def curriculum_agent():
     """)
 
     if not rows:
-        return "No curriculum data was found."
+        return "No curriculum data was found in the database."
 
     context = "Computer Science Curriculum Plan:\n\n"
     current_term = ""
@@ -105,7 +174,6 @@ def curriculum_agent():
 
 def semester_agent(question):
     q = question.lower()
-    semester_number = None
 
     if "first semester" in q or "freshman" in q:
         semester_number = 1
@@ -133,9 +201,7 @@ def semester_agent(question):
             c.course_code,
             c.course_title,
             c.credits,
-            cc.placeholder_label,
-            cc.requirement_type,
-            cc.choice_group
+            cc.placeholder_label
         FROM curriculum_courses cc
         JOIN semesters s ON cc.semester_id = s.semester_id
         LEFT JOIN courses c ON cc.course_id = c.course_id
@@ -155,6 +221,7 @@ def semester_agent(question):
             context += f"- {row['placeholder_label']}\n"
 
     return context
+
 
 
 def elective_agent(question):
@@ -181,7 +248,7 @@ def elective_agent(question):
         rows = query_db("""
             SELECT course_code, course_title, credits, elective_group
             FROM courses
-            WHERE category = 'Elective'
+            WHERE elective_group IS NOT NULL
             ORDER BY elective_group, course_code
         """)
 
@@ -229,22 +296,43 @@ def math_requirements_agent():
     rows = query_db("""
         SELECT course_code, course_title, credits
         FROM courses
-        WHERE course_code IN ('MATH 241', 'MATH 242', 'MATH 312', 'MATH 331')
+        WHERE course_code LIKE 'MATH%'
         ORDER BY course_code
     """)
 
     if not rows:
-        return "I could not find the math requirements in the database."
+        return "I could not find math requirements in the database."
 
-    context = "Math Requirements for the B.S. in Computer Science:\n\n"
+    context = "Math Requirements for Computer Science:\n\n"
 
     for row in rows:
         context += f"- {row['course_code']}: {row['course_title']} ({row['credits']} credits)\n"
 
-    context += "\nThese math courses are part of the supporting course requirements."
-
     return context
 
+def appeal_agent():
+    return """
+Academic Appeal Guidance:
+
+If you need to request an appeal at Morgan State University, start by contacting your academic advisor or the appropriate department office.
+
+Common appeals may include:
+- Academic standing appeals
+- Registration issues
+- Prerequisite overrides
+- Late withdrawal requests
+- Graduation requirement concerns
+- Grade disputes (follow official procedures)
+
+Recommended steps:
+1. Speak with your academic advisor first.
+2. Explain your situation clearly.
+3. Gather supporting documents.
+4. Complete any required university forms.
+5. Submit before deadlines.
+
+For Computer Science matters, contact Dr. Wang and your assigned advisor.
+"""
 
 def career_paths_agent():
     rows = query_db("""
@@ -254,7 +342,11 @@ def career_paths_agent():
     """)
 
     if not rows:
-        return "I could not find career path information in the database."
+        return (
+            "Computer Science students can prepare for careers like software engineer, "
+            "cybersecurity analyst, data analyst, web developer, AI/ML engineer, database administrator, "
+            "network engineer, and QA analyst."
+        )
 
     context = "Jobs you can get with a B.S. in Computer Science:\n\n"
 
@@ -272,17 +364,17 @@ def career_course_agent(question):
         keyword = "software"
     elif "cyber" in q or "security" in q:
         keyword = "cybersecurity"
-    elif "data" in q or "analyst" in q or "scientist" in q:
+    elif "data" in q:
         keyword = "data"
     elif "ai" in q or "machine learning" in q or "ml" in q:
         keyword = "ai"
-    elif "web" in q or "full-stack" in q or "full stack" in q:
+    elif "web" in q or "full stack" in q or "full-stack" in q:
         keyword = "web"
     elif "devops" in q:
         keyword = "devops"
     elif "database" in q:
         keyword = "database"
-    elif "qa" in q or "quality assurance" in q or "testing" in q:
+    elif "qa" in q or "testing" in q:
         keyword = "qa"
     elif "network" in q:
         keyword = "network"
@@ -306,24 +398,93 @@ def career_course_agent(question):
     """, (keyword,))
 
     if not rows:
-        return "I could not find course recommendations for that career."
+        return f"I could not find course recommendations for {keyword} in the database."
 
-    career_title = rows[0]["career_title"]
-
-    context = f"Course recommendations for becoming a {career_title}:\n\n"
+    context = f"Course recommendations for becoming a {rows[0]['career_title']}:\n\n"
 
     for row in rows:
         course_title = row["course_title"] or "Course not found in database"
         credits = row["credits"] or "N/A"
-
         context += f"- {row['course_code']}: {course_title} ({credits} credits)\n"
         context += f"  Reason: {row['reason']}\n"
 
     return context
 
 
+def student_gateway_agent():
+    return """
+Student Gateway Help:
+
+You can use Morgan State University's student systems for registration, tuition, Canvas, WebSIS, and personal information updates.
+
+Common guidance:
+- Register for classes through WebSIS / Student Self-Service.
+- Pay tuition through the student account/payment portal.
+- Use Canvas for course materials.
+- Use the academic calendar to check registration, add/drop, and payment deadlines.
+- For course overrides, contact Dr. Wang and your academic advisor.
+"""
+
+
+def override_agent():
+    return """
+Course Override Guidance:
+
+If you need an override for a Computer Science course, contact Dr. Wang and your academic advisor.
+
+Include:
+- Your full name
+- Student ID
+- Course name and section
+- Reason for the override
+- Any prerequisite or scheduling issue
+"""
+
+
 def get_agent_context(question):
     q = question.lower()
+    
+    small_talk_response = small_talk_agent(question)
+    if small_talk_response:
+        return small_talk_response
+    
+    if (
+        "appeal" in q
+        or "request an appeal" in q
+        or "academic appeal" in q
+    ):
+        return appeal_agent()
+    
+    if (
+        "faculty" in q
+        or "professor" in q
+        or "professors" in q
+        or "teacher" in q
+        or "teachers" in q
+        or "staff" in q
+        or "department chair" in q
+        or "chair" in q
+        or "who teaches" in q
+        or "computer science faculty" in q
+        or "cs faculty" in q
+    ):
+        return faculty_agent()
+    if "override" in q or "permission" in q:
+        return override_agent()
+
+    if (
+        "where can i register" in q
+        or "register my classes" in q
+        or "registration" in q
+        or "student gateway" in q
+        or "websis" in q
+        or "tuition" in q
+        or "pay" in q
+        or "canvas" in q
+        or "academic calendar" in q
+        or "personal information" in q
+    ):
+        return student_gateway_agent()
 
     if (
         "what classes should i take for" in q
@@ -380,7 +541,6 @@ def get_agent_context(question):
         or "semester" in q
         or "next semester" in q
         or "take next" in q
-        or "register" in q
     ):
         return semester_agent(question)
 
@@ -392,5 +552,9 @@ def get_agent_context(question):
 
 def run_advisor_agents(student_id, question):
     context = get_agent_context(question)
+
+    if not context:
+        context = """ recommend contacting Morgan State Computer Science advisors.
+"""
 
     return ask_gemini(question, context)
