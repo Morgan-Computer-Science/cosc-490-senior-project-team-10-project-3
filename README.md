@@ -50,6 +50,8 @@ cd backend
 Step 3: Install dependencies
 pip install flask flask-cors
 pip install -r requirements.txt
+Step 4: Create the environment file
+Create a file named .env inside the backend/ folder.
 Step 5: Run the Flask backend
 python3 app.py
 Step 6: Open the app
