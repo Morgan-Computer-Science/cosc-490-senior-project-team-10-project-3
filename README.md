@@ -1,26 +1,57 @@
-The Multimodal AI Student Advisor is an intelligent system designed to assist university students with academic advising using vision, language, and action (VLA) capabilities.
-This project leverages Google Vertex AI and agent-based architecture to create an AI advisor that can:
-Understand text and visual inputs (e.g., transcripts, schedules)
-Provide grounded academic recommendations
-Perform actions such as guiding workflows or interacting with systems
-Combine visual and textual inputs for better decision-making
-Retrieval-Augmented Generation (RAG)
-Pulls real academic data (degree requirements, course catalogs)
-Ensures responses are accurate and context-aware
-Action Capabilities (Computer Use)
-Simulates or assists with real tasks:
-Website Navigation 
-Navigating academic systems
-Allows user approval before important actions
-Ensures safe and reliable advising decisions
-curriculum Planning 
-Planning for the future 
-Future oppurtunities
-On-Campus Support 
+# Multimodal AI Student Advisor
 
-Start up directions- 
-STEP 1 cd backend
-STEP 2 pip install flask flask-cors and pip install -r requirements.txt
-STEP 3 python3 app.py 
-STEP 4 go to ports and click on the link for port 5000 
+The Multimodal AI Student Advisor is an intelligent academic advising system designed to help university students with course planning, degree progress, career guidance, and campus support.
+
+The system uses a multimodal AI and agent-based architecture to understand student questions, uploaded documents, and academic data. It can assist with text-based advising, transcript or resume review, curriculum planning, and guidance through academic workflows.
+
+## Features
+
+- Academic advising chatbot
+- Degree and curriculum planning
+- Course recommendations based on career goals
+- Resume and Degree Works document support
+- Morgan State University Computer Science advising information
+- RAG-based responses using academic data
+- Guidance for registration, tuition, Canvas, WebSIS, and academic calendar links
+- Support for appeals, overrides, faculty information, and on-campus resources
+- Future support for multimodal vision, language, and action capabilities
+
+## Technologies Used
+
+- Python
+- Flask
+- Flask-CORS
+- SQLite
+- Google Gemini / Vertex AI
+- HTML, CSS, JavaScript
+- Tailwind CSS
+
+## Project Structure
+
+```text
+backend/
+  app.py
+  agent.py
+  class_database.py
+  student_advisor.db
+  requirements.txt
+  .env
+
+frontend/
+  chat_dashboard/
+  login/
+  signup_onboarding/
+
+#Setup Instructions
+Step 1: Open the project
+cd /workspaces/cosc-490-senior-project-team-10-project-3
+Step 2: Go into the backend folder
+cd backend
+Step 3: Install dependencies
+pip install flask flask-cors
+pip install -r requirements.txt
+Step 5: Run the Flask backend
+python3 app.py
+Step 6: Open the app
+Go to the Ports tab in Codespaces and open the link for port 5000.
 
