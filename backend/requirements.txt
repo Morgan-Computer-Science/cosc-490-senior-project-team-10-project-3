@@ -1,0 +1,50 @@
+# Core Python utilities
+python-dotenv
+pydantic
+requests
+
+# Google Cloud / Vertex AI
+google-cloud-aiplatform
+google-cloud-storage
+google-cloud-logging
+google-auth
+
+# Agent Development Kit (ADK)
+google-adk
+
+# FastAPI backend (optional but recommended)
+fastapi
+uvicorn
+
+# Data handling
+pandas
+numpy
+
+# RAG / Retrieval tools
+langchain
+langchain-community
+faiss-cpu
+
+# Multimodal / Image processing
+Pillow
+opencv-python
+
+# ML / optional modeling
+scikit-learn
+
+# JSON + parsing utilities
+orjson
+
+# Async support
+httpx
+aiofiles
+
+# CLI / Dev tools
+tqdm
+
+# Testing (optional)
+pytest
+
+# Formatting / linting (optional but good practice)
+black
+flake8
