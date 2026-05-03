@@ -40,20 +40,25 @@ backend/
 frontend/
   chat_dashboard/
   login/
-  signup_onboarding/
+   signup_onboarding/
 
-#Setup Instructions
-Step 1: Open the project
+
+   
+Setup Instructions
+Step 1: Open Project
 cd /workspaces/cosc-490-senior-project-team-10-project-3
-Step 2: Go into the backend folder
+Step 2: Enter Backend Folder
 cd backend
-Step 3: Install dependencies
+Step 3: Install Dependencies
 pip install flask flask-cors
 pip install -r requirements.txt
-Step 4: Create the environment file
-Create a file named .env inside the backend/ folder.
-Step 5: Run the Flask backend
+Step 4: Create Environment File
+Create a file named:
+.env
+Inside .env place:
+GEMINI_API_KEY=your_api_key_here
+Step 5: Run Project
 python3 app.py
-Step 6: Open the app
-Go to the Ports tab in Codespaces and open the link for port 5000.
+Step 6: Open Application
+Open the forwarded Port 5000 link.
 

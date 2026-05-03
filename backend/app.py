@@ -59,19 +59,20 @@ def adviser():
     file_text = data.get("file_text", "")
 
     if not question:
-        return jsonify({
-            "reply": "Please ask a question first."
-        }), 400
+        return jsonify({"reply": "Please ask a question first."}), 400
 
     try:
         if file_text:
             question = f"{question}\n\nAttached file name: {file_name}\n\nAttached file content:\n{file_text}"
 
-        reply = run_advisor_agents(student_id, question)
+        db_reply = get_db_answer(question)
 
-        return jsonify({
-            "reply": reply
-        })
+        if db_reply:
+            reply = db_reply
+        else:
+            reply = run_advisor_agents(student_id, question)
+
+        return jsonify({"reply": reply})
 
     except Exception as e:
         return jsonify({
